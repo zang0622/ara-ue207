@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ARA 연구로 UE207 — 프로젝트 관리 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#f4f6fa;--card:#fff;--nav:#1e3a8a;
+  --accent:#2563eb;--green:#059669;--amber:#d97706;--red:#dc2626;--purple:#7c3aed;--pink:#db2777;
+  --text:#1e293b;--text2:#475569;--text3:#94a3b8;
+  --border:#e2e8f0;--radius:12px;--shadow:0 1px 3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+.nav{background:var(--nav);padding:0 24px;display:flex;align-items:center;height:52px;position:sticky;top:0;z-index:100;gap:0}
+.nav-brand{color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;margin-right:24px;white-space:nowrap}
+.nav-brand span{background:#2563eb;color:#fff;font-size:11px;padding:2px 7px;border-radius:5px}
+.nav-tabs{display:flex;gap:0;flex:1;overflow-x:auto}
+.nav-tab{color:#93c5fd;font-size:12px;padding:0 14px;height:52px;display:flex;align-items:center;cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;font-weight:500}
+.nav-tab:hover{color:#fff;background:rgba(255,255,255,.07)}
+.nav-tab.on{color:#fff;border-bottom-color:#60a5fa;background:rgba(255,255,255,.1)}
+.nav-right{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}
+.nav-date{color:#93c5fd;font-size:11px;white-space:nowrap}
+.pm-login-btn{background:#2563eb;color:#fff;border:none;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pm-login-btn.on{background:#059669}
+.main{flex:1;padding:24px;max-width:1300px;width:100%;margin:0 auto}
+.section{display:none}.section.on{display:block}
+.section-label{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.section-title{font-size:24px;font-weight:700;color:var(--text);margin-bottom:6px}
+.section-desc{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:18px;box-shadow:var(--shadow)}
+.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-title-dot{width:8px;height:8px;border-radius:50%}
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+.kpi{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;box-shadow:var(--shadow);border-top:3px solid}
+.kpi-lbl{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+.kpi-val{font-size:20px;font-weight:700;color:var(--text);margin-bottom:2px}
+.kpi-sub{font-size:11px;color:var(--text3)}
+.kpi-bar{height:4px;background:#e2e8f0;border-radius:99px;margin-top:5px}
+.kpi-bar-fill{height:4px;border-radius:99px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-dot{width:5px;height:5px;border-radius:50%}
+/* 간트 */
+.gantt-wrap{overflow-x:auto}
+.gantt-tbl{border-collapse:collapse;font-size:11px;white-space:nowrap}
+.gantt-tbl th{background:#f8fafc;color:var(--text3);font-weight:600;font-size:10px;padding:5px 3px;border:1px solid var(--border);text-align:center}
+.gantt-tbl td{border:1px solid var(--border);padding:0;height:22px;vertical-align:middle}
+.g-lbl{padding:0 6px;min-width:185px;font-size:11px}
+.g-lbl.grp{background:#1e3a8a;color:#fff;font-weight:600}
+.g-lbl.sub{padding-left:16px;color:var(--text2);background:#fafbfc}
+.g-w{width:36px;text-align:center;font-size:10px;background:#f8fafc;color:var(--text3)}
+.g-w.grp{background:#1e3a8a;color:#93c5fd;font-weight:600}
+.g-cell{width:18px;height:22px;padding:0;cursor:pointer}
+.g-cell:hover{opacity:.7}
+.gc-plan{background:#2563eb33}
+.gc-actual{background:#059669}
+.gc-eq{background:#db277733}
+.gc-design{background:#d9770633}
+.gc-qa{background:#7c3aed33}
+.gc-del{background:#05966933}
+.gc-grp{background:#1e3a8a;cursor:default}
+/* 테이블 */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{background:#f8fafc;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:2px solid var(--border)}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.tbl tr:hover td{background:#f8fafc}
+.tbl-code{font-weight:700;color:var(--accent)}
+/* 이슈 */
+.issue-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;margin-bottom:8px;box-shadow:var(--shadow);border-left:4px solid}
+.issue-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:10px}
+.issue-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;margin-top:4px}
+.issue-desc{font-size:12px;color:var(--text2);margin-bottom:7px;line-height:1.6}
+.issue-action{font-size:11px;color:var(--text2);background:#f8fafc;border-radius:6px;padding:6px 9px;line-height:1.6}
+.issue-meta{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+/* 필터 */
+.filter-row{display:flex;gap:6px;flex-wrap:wrap}
+.fbtn{padding:4px 12px;border-radius:99px;border:1px solid var(--border);background:#fff;color:var(--text2);font-size:11px;cursor:pointer;font-weight:600;transition:all .12s}
+.fbtn:hover{border-color:var(--accent);color:var(--accent)}
+.fbtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* PM 편집 폼 */
+.pm-panel{border:1px solid #bfdbfe;border-radius:var(--radius);padding:16px;background:#eff6ff;margin-bottom:14px}
+.pm-panel-title{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.pm-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap}
+.pm-row label{font-size:11px;color:var(--text2);min-width:70px;font-weight:600;flex-shrink:0}
+.pm-row input,.pm-row select,.pm-row textarea{font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);flex:1;min-width:100px}
+.pm-row textarea{resize:vertical;min-height:46px}
+.btn-primary{background:var(--accent);color:#fff;border:none;padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-top:4px}
+.btn-primary:hover{background:#1d4ed8}
+.btn-danger{background:var(--red);color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:11px;cursor:pointer}
+.btn-sm{font-size:10px;padding:3px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600}
+.pm-toggle{font-size:11px;color:var(--accent);cursor:pointer;border:1px solid var(--accent);background:#fff;padding:5px 12px;border-radius:7px;font-weight:600}
+/* 시험 항목 */
+.test-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.test-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.test-hd{padding:9px 13px;font-size:12px;font-weight:700}
+.test-body{padding:5px 13px 9px}
+.test-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px}
+.test-row:last-child{border:none}
+.test-code{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;white-space:nowrap}
+/* 차트 */
+.chart-wrap{position:relative;height:260px;margin-bottom:14px}
+.chart-sm{position:relative;height:190px}
+/* 로딩 */
+.loading{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+.sync-status{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px}
+.sync-dot{width:7px;height:7px;border-radius:50%}
+/* 모달 */
+.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:14px;padding:24px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px}
+.modal input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;margin-bottom:12px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end}
+/* 공정률 편집 인라인 */
+.editable{border:none;background:transparent;font-size:inherit;color:inherit;width:60px;text-align:center;font-weight:inherit}
+.editable:focus{background:#eff6ff;border-radius:4px;outline:2px solid var(--accent)}
+@media(max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .grid2,.grid3,.grid4{grid-template-columns:1fr}
+  .test-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── 네비 ── -->
+<nav class="nav">
+  <div class="nav-brand"><span>UE207</span>ARA 연구로 프로젝트 관리</div>
+  <div class="nav-tabs">
+    <button class="nav-tab on" onclick="go(0,this)">01. 개요</button>
+    <button class="nav-tab" onclick="go(1,this)">02. 마스터 스케줄</button>
+    <button class="nav-tab" onclick="go(2,this)">03. 공정 그래프</button>
+    <button class="nav-tab" onclick="go(3,this)">04. EQ / 시험</button>
+    <button class="nav-tab" onclick="go(4,this)">05. 문서제출 (DDSS)</button>
+    <button class="nav-tab" onclick="go(5,this)">06. 이슈 관리</button>
+  </div>
+  <div class="nav-right">
+    <div class="sync-status" id="sync-status">
+      <div class="sync-dot" style="background:#94a3b8"></div>
+      <span id="sync-txt">연결 대기</span>
+    </div>
+    <button class="pm-login-btn" id="pm-btn" onclick="togglePmLogin()">PM 로그인</button>
+    <span class="nav-date" id="nav-date"></span>
+  </div>
+</nav>
+
+<!-- PM 로그인 모달 -->
+<div class="modal-bg" id="login-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">🔒 PM 로그인</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">PM 권한으로 데이터를 수정할 수 있습니다.</div>
+    <input type="password" id="pm-pw-input" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doPmLogin()">
+    <div id="login-err" style="font-size:11px;color:var(--red);margin-bottom:8px;display:none">비밀번호가 틀렸습니다</div>
+    <div class="modal-btns">
+      <button class="btn-sm" style="background:#f1f5f9;color:var(--text2)" onclick="document.getElementById('login-modal').style.display='none'">취소</button>
+      <button class="btn-sm" style="background:var(--accent);color:#fff" onclick="doPmLogin()">로그인</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ════ 01. 개요 ════ -->
+<div class="section on" id="sec0">
+  <div class="section-label">Section 01</div>
+  <div class="section-title">프로젝트 개요</div>
+  <div class="section-desc">ARA 연구로 22.9kV/4.16kV 고압차단기반(UE207) 공급 프로젝트 현황<br>계약번호: R092500097 &nbsp;|&nbsp; 공급사: (주)대산이엔씨</div>
+  <div id="kpi-grid" class="kpi-grid"></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><div class="card-title-dot" style="background:var(--accent)"></div>공정별 진행률
+        <span id="progress-edit-btn" style="display:none;margin-left:auto">
+          <button class="pm-toggle" onclick="toggleProgressEdit()">✏️ 수정</button>
+        </span>
+      </div>
+      <div id="progress-table"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-title-dot" style="background:var(--red)"></div>주요 이슈 요약</div>
+      <div id="issue-summary"></div>
+    </div>
+  </div>
+  <div class="grid4" id="device-cards"></div>
+</div>
+
+<!-- ════ 02. 마스터 스케줄 ════ -->
+<div class="section" id="sec1">
+  <div class="section-label">Section 02</div>
+  <div class="section-title">마스터 스케줄</div>
+  <div class="section-desc">
+    2025.09 ~ 2029.12 전체 공정 간트차트&nbsp;&nbsp;
+    <span style="font-size:11px;color:var(--text3)">
+      <span id="pm-gantt-hint" style="display:none;color:var(--accent);font-weight:600">✏️ PM 모드: 실적 셀 클릭 시 실적 입력/해제</span>
+    </span>
+  </div>
+  <div class="card">
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:12px;height:10px;border-radius:2px;background:#2563eb55;display:inline-block"></span>계획</span>
+      <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:12px;height:10px;border-radius:2px;background:#059669;display:inline-block"></span>실적</span>
+      <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:12px;height:10px;border-radius:2px;background:#db277733;display:inline-block"></span>EQ 시험</span>
+      <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:12px;height:10px;border-radius:2px;background:#d9770633;display:inline-block"></span>설계시험</span>
+      <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:12px;height:10px;border-radius:2px;background:#7c3aed33;display:inline-block"></span>QA/검사</span>
+      <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:12px;height:10px;border-radius:2px;background:#05966933;display:inline-block"></span>납품</span>
+      <button id="gantt-save-btn" class="btn-primary" style="display:none;margin-left:auto;font-size:11px;padding:5px 12px" onclick="saveGanttActual()">💾 실적 저장</button>
+    </div>
+    <div class="gantt-wrap"><table class="gantt-tbl" id="gantt-tbl"></table></div>
+  </div>
+</div>
+
+<!-- ════ 03. 공정 그래프 ════ -->
+<div class="section" id="sec2">
+  <div class="section-label">Section 03</div>
+  <div class="section-title">공정 그래프</div>
+  <div class="section-desc">월별 계획 대비 실적 현황 및 공정별 가중치 분포</div>
+  <div class="grid2">
+    <div class="card"><div class="card-title"><div class="card-title-dot" style="background:var(--accent)"></div>월간 계획 vs 실적율 (%)</div><div class="chart-wrap"><canvas id="chart-monthly"></canvas></div></div>
+    <div class="card"><div class="card-title"><div class="card-title-dot" style="background:var(--purple)"></div>누계 계획 vs 실적율 (%)</div><div class="chart-wrap"><canvas id="chart-cumul"></canvas></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-title"><div class="card-title-dot" style="background:var(--green)"></div>공정별 가중치</div><div class="chart-sm"><canvas id="chart-weight"></canvas></div></div>
+    <div class="card"><div class="card-title"><div class="card-title-dot" style="background:var(--amber)"></div>주요 마일스톤</div><div id="milestones"></div></div>
+  </div>
+</div>
+
+<!-- ════ 04. EQ / 시험 ════ -->
+<div class="section" id="sec3">
+  <div class="section-label">Section 04</div>
+  <div class="section-title">EQ / 시험 현황</div>
+  <div class="section-desc">기기검증(EQ) 및 설계·생산·EMC 시험 항목</div>
+  <div class="grid4" style="margin-bottom:14px">
+    <div class="card" style="text-align:center;border-top:3px solid var(--pink)"><div class="kpi-lbl">EQ 계획서 (EP-A)</div><div style="font-size:17px;font-weight:700;color:var(--pink);margin:5px 0">미착수</div><div class="kpi-sub">제출 기한: 2025.12.20</div></div>
+    <div class="card" style="text-align:center;border-top:3px solid var(--amber)"><div class="kpi-lbl">내진시험 착수</div><div style="font-size:17px;font-weight:700;color:var(--amber);margin:5px 0">2026.01</div><div class="kpi-sub">Prototype 기준</div></div>
+    <div class="card" style="text-align:center;border-top:3px solid var(--purple)"><div class="kpi-lbl">EQ 보고서 (ER-A)</div><div style="font-size:17px;font-weight:700;color:var(--purple);margin:5px 0">2027.07</div><div class="kpi-sub">FB-16주 전 제출</div></div>
+    <div class="card" style="text-align:center;border-top:3px solid var(--red)"><div class="kpi-lbl">EQ 기관 선정</div><div style="font-size:17px;font-weight:700;color:var(--red);margin:5px 0">⚠ 미착수</div><div class="kpi-sub">긴급 처리 필요</div></div>
+  </div>
+  <div class="test-grid" id="test-grid"></div>
+</div>
+
+<!-- ════ 05. 문서제출 ════ -->
+<div class="section" id="sec4">
+  <div class="section-label">Section 05</div>
+  <div class="section-title">문서 제출 현황 (DDSS)</div>
+  <div class="section-desc">AW=계약일(2025.09.17) | FB=제작착수일 | SH=출하일 | R=검토·승인용 | I=참고용</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div class="filter-row" id="ddss-filters"></div>
+    <div style="display:flex;gap:8px" id="ddss-pm-btns" style="display:none">
+      <button class="pm-toggle" onclick="togglePanel('ddss-form')">+ 문서 추가</button>
+    </div>
+  </div>
+  <div class="pm-panel" id="ddss-form" style="display:none">
+    <div class="pm-panel-title">📄 문서 추가 (PM 전용)</div>
+    <div class="pm-row"><label>코드</label><input id="dc" placeholder="예: TP-A"><label style="min-width:20px">기기</label><select id="deq"><option>22.9kV</option><option>4.16kV</option><option>FR</option><option>3종</option></select><label style="min-width:20px">R/I</label><select id="dri"><option>R</option><option>I</option></select></div>
+    <div class="pm-row"><label>문서명</label><input id="dn" placeholder="문서 제목"></div>
+    <div class="pm-row"><label>예정일</label><input id="ddue" placeholder="2026.01.20"><label style="min-width:30px">상태</label><select id="dst"><option>미착수</option><option>진행중</option><option>제출완료</option><option>승인완료</option><option>반려/재제출</option></select></div>
+    <div class="pm-row"><label>비고</label><input id="dbk" placeholder="비고"></div>
+    <button class="btn-primary" onclick="addDdss()">추가</button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table class="tbl" id="ddss-tbl"></table></div></div>
+</div>
+
+<!-- ════ 06. 이슈 관리 ════ -->
+<div class="section" id="sec5">
+  <div class="section-label">Section 06</div>
+  <div class="section-title">이슈 관리</div>
+  <div class="section-desc">프로젝트 이슈 등록·추적·조치 현황 (PM이 입력, 팀원 조회)</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div class="filter-row" id="issue-filters"></div>
+    <div id="issue-pm-btns" style="display:none"><button class="pm-toggle" onclick="togglePanel('issue-form')">+ 이슈 등록</button></div>
+  </div>
+  <div class="pm-panel" id="issue-form" style="display:none">
+    <div class="pm-panel-title">⚠️ 이슈 등록 (PM 전용)</div>
+    <div class="pm-row"><label>긴급도</label><select id="ilv"><option>긴급</option><option>주의</option><option>정상</option></select><label style="min-width:30px">분류</label><input id="icat" placeholder="조달/설계/EQ" style="flex:1"></div>
+    <div class="pm-row"><label>이슈 제목</label><input id="ititle" placeholder="이슈 요약"></div>
+    <div class="pm-row"><label>상세 내용</label><textarea id="idesc" placeholder="원인 및 현황"></textarea></div>
+    <div class="pm-row"><label>조치 계획</label><textarea id="iaction" placeholder="조치 계획"></textarea></div>
+    <div class="pm-row"><label>담당자</label><input id="iowner" placeholder="팀/이름"><label style="min-width:50px">목표기한</label><input id="idue" placeholder="2025.12.31" style="flex:1"></div>
+    <div class="pm-row"><label>상태</label><select id="ist"><option>미조치</option><option>조치중</option><option>조치완료</option><option>모니터링</option></select></div>
+    <button class="btn-primary" onclick="addIssue()">등록</button>
+  </div>
+  <div id="issue-list"></div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// 설정: Google Apps Script 배포 URL을 아래에 붙여넣으세요
+// ══════════════════════════════════════════════════════════════
+let API_URL = localStorage.getItem('ara_api_url') || '';
+
+// 첫 실행 시 API URL 입력 안내
+if (!API_URL) {
+  setTimeout(() => {
+    const url = prompt('🔧 초기 설정\n\nGoogle Apps Script 배포 URL을 입력하세요.\n(배포 후 받은 웹앱 URL)\n\n※ 나중에 입력하려면 취소하세요. 로컬 모드로 실행됩니다.');
+    if (url && url.startsWith('http')) {
+      API_URL = url.trim();
+      localStorage.setItem('ara_api_url', API_URL);
+      loadFromSheets();
+    }
+  }, 800);
+}
+
+// ── 날짜 ─────────────────────────────────────────────────────
+const today = new Date();
+document.getElementById('nav-date').textContent =
+  `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
+
+// ── PM 상태 ───────────────────────────────────────────────────
+let isPM = false;
+const PM_PW = 'ara2025!'; // 웹앱 확인용 (실제 인증은 Sheets Script에서)
+
+function togglePmLogin() {
+  if (isPM) { logoutPm(); return; }
+  document.getElementById('login-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('pm-pw-input').focus(), 100);
+}
+function doPmLogin() {
+  const pw = document.getElementById('pm-pw-input').value;
+  if (pw === PM_PW) {
+    isPM = true;
+    pmPassword = pw;
+    document.getElementById('login-modal').style.display = 'none';
+    document.getElementById('pm-btn').textContent = '✅ PM 모드';
+    document.getElementById('pm-btn').classList.add('on');
+    document.getElementById('pm-pw-input').value = '';
+    document.getElementById('login-err').style.display = 'none';
+    activatePmUI();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+  }
+}
+function logoutPm() {
+  isPM = false; pmPassword = '';
+  document.getElementById('pm-btn').textContent = 'PM 로그인';
+  document.getElementById('pm-btn').classList.remove('on');
+  deactivatePmUI();
+}
+let pmPassword = '';
+
+function activatePmUI() {
+  document.getElementById('progress-edit-btn').style.display = 'flex';
+  document.getElementById('ddss-pm-btns').style.display = 'flex';
+  document.getElementById('issue-pm-btns').style.display = 'block';
+  document.getElementById('pm-gantt-hint').style.display = 'inline';
+  document.getElementById('gantt-save-btn').style.display = 'block';
+  renderAll();
+}
+function deactivatePmUI() {
+  document.getElementById('progress-edit-btn').style.display = 'none';
+  document.getElementById('ddss-pm-btns').style.display = 'none';
+  document.getElementById('issue-pm-btns').style.display = 'none';
+  document.getElementById('pm-gantt-hint').style.display = 'none';
+  document.getElementById('gantt-save-btn').style.display = 'none';
+  renderAll();
+}
+
+// ── 탭 ───────────────────────────────────────────────────────
+let ganttBuilt=false, chartsBuilt=false, testBuilt=false;
+function go(idx, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('sec'+idx).classList.add('on');
+  btn.classList.add('on');
+  if(idx===1&&!ganttBuilt){buildGantt();ganttBuilt=true;}
+  if(idx===2&&!chartsBuilt){buildCharts();chartsBuilt=true;}
+  if(idx===3&&!testBuilt){buildTest();testBuilt=true;}
+}
+
+// ── 로컬 스토리지 fallback ────────────────────────────────────
+const SK = { progress:'ara_prog', gantt:'ara_gantt2', ddss:'ara_ddss3', issues:'ara_iss3', milestone:'ara_ms' };
+function lload(key,def){try{const s=localStorage.getItem(key);return s?JSON.parse(s):def;}catch(e){return def;}}
+function lsave(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch(e){}}
+
+// ── 데이터 ───────────────────────────────────────────────────
+const PROGRESS_DEF = [
+  {공정명:'Vendor Print',가중치:20,계획율:1.0,실적율:0.0,상태:'진행중',비고:''},
+  {공정명:'Sub-order Placement',가중치:10,계획율:1.0,실적율:1.0,상태:'정상',비고:'GE·Enclosure 발주완료'},
+  {공정명:'Material Receiving',가중치:10,계획율:0.0,실적율:0.0,상태:'미착수',비고:''},
+  {공정명:'Fabrication',가중치:40,계획율:0.0,실적율:0.0,상태:'미착수',비고:'PROTO TYPE 구조설계중'},
+  {공정명:'Inspection & Delivery',가중치:20,계획율:0.0,실적율:0.0,상태:'미착수',비고:''},
+];
+const DDSS_DEF = [
+  {코드:'QM-A',문서명:'Quality Assurance Manual',기기:'3종','R/I':'R',예정일:'2025.10.15',상태:'진행중',비고:''},
+  {코드:'QL-A',문서명:"Supplier's Quality Plan",기기:'3종','R/I':'R',예정일:'2025.10.15',상태:'진행중',비고:''},
+  {코드:'CL-A',문서명:'도서 제출 일정표 (22.9kV)',기기:'22.9kV','R/I':'R',예정일:'2025.11.20',상태:'미착수',비고:''},
+  {코드:'CL-A',문서명:'도서 제출 일정표 (4.16kV)',기기:'4.16kV','R/I':'R',예정일:'2026.01.20',상태:'미착수',비고:''},
+  {코드:'VL-A',문서명:'QVDL & Sample Forms',기기:'3종','R/I':'R',예정일:'2025.11.20',상태:'미착수',비고:''},
+  {코드:'CR-A',문서명:'월간 진도보고서',기기:'3종','R/I':'I',예정일:'매월 25일',상태:'진행중',비고:'1호 완료'},
+  {코드:'EP-A',문서명:'Dynamic Qualification Plan ⚠',기기:'4.16kV','R/I':'R',예정일:'2025.12.20',상태:'미착수',비고:'긴급'},
+  {코드:'DG-A',문서명:'배치·외형도 (22.9kV)',기기:'22.9kV','R/I':'R',예정일:'2025.12.20',상태:'미착수',비고:''},
+  {코드:'DE-A~D',문서명:'단선도·회로도·배선도 (22.9kV)',기기:'22.9kV','R/I':'R',예정일:'2025.12.20',상태:'미착수',비고:''},
+  {코드:'DC-A~D',문서명:'내진계산서 (4.16kV)',기기:'4.16kV','R/I':'R',예정일:'2026.03.20',상태:'미착수',비고:''},
+  {코드:'TP-A',문서명:'Design Test Procedure (22.9kV)',기기:'22.9kV','R/I':'R',예정일:'2026.01.20',상태:'미착수',비고:''},
+  {코드:'TP-A',문서명:'Design Test Procedure (4.16kV)',기기:'4.16kV','R/I':'R',예정일:'2026.04.20',상태:'미착수',비고:''},
+  {코드:'EP-E',문서명:'EMI/RFI/ESD/SWC Test Plan',기기:'4.16kV','R/I':'R',예정일:'2026.04.20',상태:'미착수',비고:''},
+  {코드:'TP-B',문서명:'Production Test Procedure',기기:'4.16kV','R/I':'R',예정일:'2026.09.20',상태:'미착수',비고:''},
+  {코드:'ER-A',문서명:'EQ Report + Raw Data ⚠',기기:'4.16kV','R/I':'R',예정일:'2027.07.20',상태:'미착수',비고:'제작착수 조건'},
+  {코드:'TR-A',문서명:'Design Test Report (22.9kV)',기기:'22.9kV','R/I':'R',예정일:'2027.03.20',상태:'미착수',비고:''},
+  {코드:'IM-A',문서명:'Instruction Manual',기기:'3종','R/I':'I',예정일:'2027.10.20',상태:'미착수',비고:''},
+  {코드:'VR-A',문서명:'Quality Verification Documents',기기:'3종','R/I':'I',예정일:'2028.01.20',상태:'미착수',비고:''},
+  {코드:'QR-A',문서명:'QVDs 최종',기기:'3종','R/I':'I',예정일:'2029.05.20',상태:'미착수',비고:'To KAERI'},
+];
+const ISSUES_DEF = [
+  {긴급도:'긴급',분류:'조달',이슈제목:'ABB 보호계전기(25,27) Q-CLASS 조달 지연',상세내용:'발주처-ABB NLPA 체결 지연으로 Q-CLASS 구매 불가',조치계획:'Deesys 27 Q-CLASS 대안 검토, NLPA 체결 촉구',담당자:'설계팀',목표기한:'2025.12.31',상태:'조치중'},
+  {긴급도:'주의',분류:'설계',이슈제목:'외함 높이 재검토',상세내용:'기기배치·Door 가공 규격 당초 계획과 상이',조치계획:'외함 높이 재설계, KEPCO E&C 협의',담당자:'설계팀',목표기한:'2026.01.31',상태:'조치중'},
+  {긴급도:'긴급',분류:'EQ',이슈제목:'EQ 시험기관 미선정 — EP-A 제출 임박',상세내용:'EQ사 미선정 상태. EP-A 제출 예정일 2025.12.20',조치계획:'EQ 기관 후보 목록 작성, EP-A 초안 작성·제출',담당자:'기술팀',목표기한:'2025.12.20',상태:'미조치'},
+  {긴급도:'주의',분류:'설계',이슈제목:'Control Cable Color/규격 미확정',상세내용:'ABB 계전기 25,27 관련 Cable 규격 논의 중',조치계획:'KEPCO E&C 협의 후 규격 확정',담당자:'설계팀',목표기한:'2025.11.30',상태:'조치중'},
+  {긴급도:'정상',분류:'조달',이슈제목:'SIS 고체절연 스위치기어 발주 진행',상세내용:'인텍전기전자 협의 진행 중',조치계획:'발주 협의 완료 후 즉시 발주',담당자:'구매팀',목표기한:'2026.01.31',상태:'조치중'},
+];
+const MILESTONE_DEF = [
+  {날짜:'2025.09.17',마일스톤:'계약 체결',완료여부:'완료',비고:''},
+  {날짜:'2025.10.16',마일스톤:'사업 착수 (킥오프)',완료여부:'완료',비고:''},
+  {날짜:'2025.12.20',마일스톤:'EQ 계획서 (EP-A) 제출',완료여부:'미완료',비고:'⚠ 긴급'},
+  {날짜:'2026.01.20',마일스톤:'설계도서 제출 (22.9kV)',완료여부:'미완료',비고:''},
+  {날짜:'2026.04.20',마일스톤:'설계시험 절차서 (TP-A)',완료여부:'미완료',비고:''},
+  {날짜:'2027.07.20',마일스톤:'EQ 보고서 (ER-A) 제출',완료여부:'미완료',비고:''},
+  {날짜:'2027.10.29',마일스톤:'1차 납품 (22.9kV)',완료여부:'미완료',비고:''},
+  {날짜:'2029.04.13',마일스톤:'최종 납품 완료',완료여부:'미완료',비고:''},
+];
+
+// ── Google Sheets 연동 ────────────────────────────────────────
+function setSyncStatus(state, msg) {
+  const dot = document.getElementById('sync-status').querySelector('.sync-dot');
+  const txt = document.getElementById('sync-txt');
+  const colors = {ok:'#059669', loading:'#d97706', error:'#dc2626', idle:'#94a3b8'};
+  dot.style.background = colors[state] || colors.idle;
+  txt.textContent = msg;
+}
+
+async function loadFromSheets() {
+  if (!API_URL) { setSyncStatus('idle','로컬 모드'); return; }
+  setSyncStatus('loading','Sheets 로딩 중...');
+  try {
+    const res = await fetch(API_URL + '?action=read', {
+      redirect: 'follow',
+      mode: 'cors',
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    // Sheets 데이터를 로컬 포맷으로 변환
+    if (data.progress && data.progress.length) lsave(SK.progress, data.progress);
+    if (data.ddss && data.ddss.length) {
+      // Sheets 헤더 → 로컬 키 매핑
+      lsave(SK.ddss, data.ddss.map(d=>({코드:d['코드'],문서명:d['문서명'],기기:d['기기'],'R/I':d['R/I'],예정일:d['예정일'],상태:d['상태'],비고:d['비고']})));
+    }
+    if (data.issues && data.issues.length) {
+      lsave(SK.issues, data.issues.map(d=>({긴급도:d['긴급도'],분류:d['분류'],이슈제목:d['이슈 제목'],상세내용:d['상세 내용'],조치계획:d['조치 계획'],담당자:d['담당자'],목표기한:d['목표기한'],상태:d['상태']})));
+    }
+    if (data.gantt && data.gantt.length) {
+      lsave(SK.gantt, data.gantt.map(d=>({공정명:d['공정명'],y:Number(d['연도']),m:Number(d['월'])})));
+    }
+    if (data.milestone && data.milestone.length) lsave(SK.milestone, data.milestone);
+    setSyncStatus('ok','Sheets 동기화 완료');
+    renderAll();
+  } catch(e) {
+    setSyncStatus('error','Sheets 연결 실패 — 로컬 모드');
+    console.error(e);
+  }
+}
+
+async function postToSheets(action, data) {
+  if (!API_URL) return false;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      mode: 'cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action, data, password: pmPassword }),
+    });
+    const json = await res.json();
+    if (json.error) { alert('저장 실패: ' + json.error); return false; }
+    setSyncStatus('ok','저장 완료 ✓');
+    return true;
+  } catch(e) {
+    setSyncStatus('error','Sheets 저장 실패');
+    return false;
+  }
+}
+
+// ── 상태 메타 ─────────────────────────────────────────────────
+const SM={
+  '미착수':{bg:'#f1f5f9',tc:'#475569',dot:'#94a3b8'},
+  '진행중':{bg:'#dbeafe',tc:'#1e40af',dot:'#2563eb'},
+  '제출완료':{bg:'#d1fae5',tc:'#065f46',dot:'#059669'},
+  '승인완료':{bg:'#d1fae5',tc:'#065f46',dot:'#059669'},
+  '반려/재제출':{bg:'#fee2e2',tc:'#991b1b',dot:'#dc2626'},
+  '미조치':{bg:'#fee2e2',tc:'#991b1b',dot:'#dc2626'},
+  '조치중':{bg:'#fef3c7',tc:'#92400e',dot:'#d97706'},
+  '조치완료':{bg:'#d1fae5',tc:'#065f46',dot:'#059669'},
+  '모니터링':{bg:'#ede9fe',tc:'#4c1d95',dot:'#7c3aed'},
+  '정상':{bg:'#d1fae5',tc:'#065f46',dot:'#059669'},
+};
+const LM={
+  '긴급':{bg:'#fee2e2',tc:'#991b1b',border:'#dc2626'},
+  '주의':{bg:'#fef3c7',tc:'#92400e',border:'#d97706'},
+  '정상':{bg:'#d1fae5',tc:'#065f46',border:'#059669'},
+};
+function bdg(s){const m=SM[s]||SM['미착수'];return `<span class="badge" style="background:${m.bg};color:${m.tc}"><span class="badge-dot" style="background:${m.dot}"></span>${s}</span>`;}
+
+// ── 01. 개요 렌더 ────────────────────────────────────────────
+function renderOverview() {
+  const prog = lload(SK.progress, PROGRESS_DEF);
+  const issues = lload(SK.issues, ISSUES_DEF);
+  const ddss = lload(SK.ddss, DDSS_DEF);
+
+  // KPI
+  const totalPlan = prog.reduce((s,p)=>s+p.가중치*p.계획율/100,0).toFixed(1);
+  const totalAct  = prog.reduce((s,p)=>s+p.가중치*p.실적율/100,0).toFixed(1);
+  const urgCnt    = issues.filter(i=>i.긴급도==='긴급').length;
+  const warnCnt   = issues.filter(i=>i.긴급도==='주의').length;
+  const docDone   = ddss.filter(d=>d.상태==='진행중'||d.상태==='제출완료'||d.상태==='승인완료').length;
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi" style="border-top-color:#2563eb"><div class="kpi-lbl">계약 체결</div><div class="kpi-val" style="font-size:14px">2025.09.17</div><div class="kpi-sub">R092500097</div></div>
+    <div class="kpi" style="border-top-color:#059669"><div class="kpi-lbl">사업 착수</div><div class="kpi-val" style="font-size:14px">2025.10.16</div><div class="kpi-sub">킥오프 완료</div></div>
+    <div class="kpi" style="border-top-color:#d97706"><div class="kpi-lbl">계획 납기</div><div class="kpi-val" style="font-size:14px">~2029.04</div><div class="kpi-sub">최종 2029.12.15</div></div>
+    <div class="kpi" style="border-top-color:#2563eb"><div class="kpi-lbl">누계 계획율</div><div class="kpi-val">${totalPlan}%</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(totalPlan,100)}%;background:#2563eb"></div></div></div>
+    <div class="kpi" style="border-top-color:#059669"><div class="kpi-lbl">누계 실적율</div><div class="kpi-val">${totalAct}%</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(totalAct,100)}%;background:#059669"></div></div></div>
+    <div class="kpi" style="border-top-color:#dc2626"><div class="kpi-lbl">이슈 건수</div><div class="kpi-val">${issues.length}건</div><div class="kpi-sub">긴급 ${urgCnt} · 주의 ${warnCnt}</div></div>`;
+
+  // 공정률 테이블
+  let progEdit = false;
+  document.getElementById('progress-table').innerHTML = `
+    <table class="tbl" id="prog-tbl">
+      <thead><tr><th>공정명</th><th>가중치</th><th>계획율%</th><th>실적율%</th><th>상태</th><th>비고</th>${isPM?'<th>저장</th>':''}</tr></thead>
+      <tbody>${prog.map((p,i)=>`<tr>
+        <td>${p.공정명}</td>
+        <td style="text-align:center">${p.가중치}%</td>
+        <td style="text-align:center">${isPM?`<input class="editable" type="number" min="0" max="100" step="0.1" value="${p.계획율}" onchange="updateProg(${i},'계획율',this.value)">`:`${p.계획율}%`}</td>
+        <td style="text-align:center">${isPM?`<input class="editable" type="number" min="0" max="100" step="0.1" value="${p.실적율}" onchange="updateProg(${i},'실적율',this.value)">`:`${p.실적율}%`}</td>
+        <td>${isPM?`<select onchange="updateProg(${i},'상태',this.value)" style="font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:5px">${['미착수','진행중','정상','완료'].map(s=>`<option${p.상태===s?' selected':''}>${s}</option>`).join('')}</select>`:bdg(p.상태)}</td>
+        <td style="font-size:11px;color:var(--text2)">${isPM?`<input style="font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:5px;width:100%" value="${p.비고||''}" onchange="updateProg(${i},'비고',this.value)">`:p.비고||'-'}</td>
+        ${isPM?`<td></td>`:''}
+      </tr>`).join('')}
+      ${isPM?`<tr style="font-weight:700;background:#f8fafc"><td>합계</td><td style="text-align:center">100%</td><td style="text-align:center">${totalPlan}%</td><td style="text-align:center">${totalAct}%</td><td colspan="2"></td><td><button class="btn-primary" style="font-size:11px;padding:4px 10px" onclick="saveProgress()">💾 저장</button></td></tr>`:
+      `<tr style="font-weight:700;background:#f8fafc"><td>합계</td><td style="text-align:center">100%</td><td style="text-align:center">${totalPlan}%</td><td style="text-align:center">${totalAct}%</td><td colspan="2"></td></tr>`}
+      </tbody>
+    </table>`;
+
+  // 이슈 요약 (상위 5개)
+  const lvColor={'긴급':['#fef2f2','#dc2626'],'주의':['#fffbeb','#d97706'],'정상':['#f0fdf4','#059669']};
+  const lvIcon={'긴급':'🔴','주의':'🟡','정상':'🟢'};
+  document.getElementById('issue-summary').innerHTML = `<div style="display:flex;flex-direction:column;gap:7px">` +
+    lload(SK.issues,ISSUES_DEF).slice(0,5).map(iss=>{
+      const [bg,bc]=lvColor[iss.긴급도]||lvColor['정상'];
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:9px;background:${bg};border-radius:8px;border-left:3px solid ${bc}">
+        <div style="font-size:11px;font-weight:700;color:${bc};white-space:nowrap">${lvIcon[iss.긴급도]||''} ${iss.긴급도}</div>
+        <div><div style="font-size:12px;color:var(--text);font-weight:500">${iss.이슈제목}</div>
+        <div style="font-size:11px;color:var(--text2)">${iss.조치계획}</div></div>
+      </div>`;
+    }).join('') + '</div>';
+
+  // 기기 카드
+  document.getElementById('device-cards').innerHTML = `
+    <div class="card" style="text-align:center"><div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:7px">22.9kV SWGR</div><div style="font-size:26px;font-weight:800;color:#2563eb">1식</div><div style="font-size:11px;color:var(--text3);margin-top:3px">수량</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:7px">4.16kV SWGR (1E)</div><div style="font-size:26px;font-weight:800;color:#7c3aed">1식</div><div style="font-size:11px;color:var(--text3);margin-top:3px">Class 1E 핵안전</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:7px">Fault Recorder</div><div style="font-size:26px;font-weight:800;color:#059669">1식</div><div style="font-size:11px;color:var(--text3);margin-top:3px">고장기록반</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:7px">문서 진행</div><div style="font-size:26px;font-weight:800;color:#d97706">${docDone}/${ddss.length}</div><div style="font-size:11px;color:var(--text3);margin-top:3px">진행중 이상</div></div>`;
+}
+
+function toggleProgressEdit(){} // 인라인 편집으로 대체
+
+// 공정률 수정
+let progData = null;
+function updateProg(i, key, val) {
+  const prog = lload(SK.progress, PROGRESS_DEF);
+  if (key==='계획율'||key==='실적율') prog[i][key]=parseFloat(val)||0;
+  else prog[i][key]=val;
+  lsave(SK.progress, prog);
+}
+async function saveProgress() {
+  const prog = lload(SK.progress, PROGRESS_DEF);
+  setSyncStatus('loading','저장 중...');
+  await postToSheets('saveProgress', prog.map(p=>({'공정명':p.공정명,'가중치':p.가중치,'계획율':p.계획율,'실적율':p.실적율,'상태':p.상태,'비고':p.비고||''})));
+  setSyncStatus('ok','공정률 저장 완료');
+  renderOverview();
+}
+
+// ── 02. 간트 ─────────────────────────────────────────────────
+function pIdx(y,m){return y===2025?m-9:4+(y-2026)*12+(m-1);}
+function pRange(y1,m1,y2,m2){const a=[];for(let i=pIdx(y1,m1);i<=pIdx(y2,m2);i++)a.push(i);return a;}
+
+const GANTT_ROWS=[
+  {g:1,label:'Vendor Print',w:'20%'},
+  {g:0,label:'공급자도서 작성',w:'',plan:pRange(2025,11,2027,12),cls:'plan'},
+  {g:0,label:'공급자도서 제출',w:'',plan:[pIdx(2025,11),pIdx(2026,3),pIdx(2026,9),pIdx(2027,2)],cls:'plan'},
+  {g:1,label:'Sub-order Placement',w:'10%'},
+  {g:0,label:'자재 발주',w:'',plan:pRange(2025,9,2026,4),cls:'plan'},
+  {g:1,label:'Material Receiving',w:'10%'},
+  {g:0,label:'자재 입고',w:'',plan:pRange(2026,4,2028,6),cls:'plan'},
+  {g:1,label:'Fabrication',w:'40%'},
+  {g:0,label:'PROTO TYPE 설계·승인',w:'',plan:pRange(2025,9,2026,3),cls:'plan'},
+  {g:0,label:'EQ 계획서 (EP-A)',w:'',plan:[pIdx(2025,12)],cls:'eq'},
+  {g:0,label:'EQ 내진시험',w:'',plan:pRange(2026,1,2027,4),cls:'eq'},
+  {g:0,label:'EQ 환경시험 (열노화→DBE)',w:'',plan:pRange(2026,3,2027,6),cls:'eq'},
+  {g:0,label:'EMI/RFI/SWC 시험',w:'',plan:pRange(2026,4,2027,3),cls:'eq'},
+  {g:0,label:'EQ 보고서 (ER-A)',w:'',plan:[pIdx(2027,7)],cls:'eq'},
+  {g:0,label:'설계시험 절차서 (TP-A)',w:'',plan:[pIdx(2026,4)],cls:'design'},
+  {g:0,label:'설계시험 D-1~D-10',w:'',plan:pRange(2026,6,2027,3),cls:'design'},
+  {g:0,label:'설계시험 보고서 (TR-A)',w:'',plan:[pIdx(2027,2)],cls:'design'},
+  {g:0,label:'본제작 착수',w:'',plan:pRange(2027,3,2028,12),cls:'plan'},
+  {g:1,label:'Inspection & Delivery',w:'20%'},
+  {g:0,label:'자체 시험 (Factory)',w:'',plan:pRange(2027,5,2028,6),cls:'qa'},
+  {g:0,label:'입회 검사',w:'',plan:pRange(2027,9,2029,1),cls:'qa'},
+  {g:0,label:'납품 1차 (22.9kV)',w:'',plan:pRange(2027,10,2027,10),cls:'del'},
+  {g:0,label:'납품 2차 (4.16kV)',w:'',plan:pRange(2028,6,2029,4),cls:'del'},
+  {g:0,label:'납품 3차 (FR)',w:'',plan:pRange(2028,10,2029,4),cls:'del'},
+];
+const YRS=[{y:2025,n:4,bg:'#dbeafe',tc:'#1e40af'},{y:2026,n:12,bg:'#fef3c7',tc:'#92400e'},{y:2027,n:12,bg:'#d1fae5',tc:'#065f46'},{y:2028,n:12,bg:'#fce7f3',tc:'#9d174d'},{y:2029,n:12,bg:'#ede9fe',tc:'#4c1d95'}];
+const MOS=[];
+for(let y=2025;y<=2029;y++){const s=y===2025?9:1;for(let m=s;m<=12;m++)MOS.push({y,m});}
+
+// 실적 데이터 (공정명+월인덱스 세트)
+function getActualSet(){
+  const gantt=lload(SK.gantt,[]);
+  const set=new Set();
+  gantt.forEach(g=>set.add(g.공정명+'_'+pIdx(g.y,g.m)));
+  return set;
+}
+function toggleActual(label,idx){
+  if(!isPM)return;
+  const gantt=lload(SK.gantt,[]);
+  const key=label+'_'+idx;
+  const actSet=getActualSet();
+  if(actSet.has(key)){
+    // 제거
+    const mo=MOS[idx];
+    const newG=gantt.filter(g=>!(g.공정명===label&&g.y===mo.y&&g.m===mo.m));
+    lsave(SK.gantt,newG);
+  } else {
+    // 추가
+    const mo=MOS[idx];
+    gantt.push({공정명:label,y:mo.y,m:mo.m});
+    lsave(SK.gantt,gantt);
+  }
+  buildGantt();
+}
+
+function buildGantt(){
+  const actSet=getActualSet();
+  const tbl=document.getElementById('gantt-tbl');
+  let h='<thead><tr><th style="min-width:185px;text-align:left;padding:5px 7px">공정명</th><th style="min-width:36px">가중치</th>';
+  YRS.forEach(yr=>h+=`<th colspan="${yr.n}" style="background:${yr.bg};color:${yr.tc};font-weight:700;font-size:10px;text-align:center;padding:3px 0">${yr.y}</th>`);
+  h+='</tr><tr><th></th><th></th>';
+  MOS.forEach(mo=>h+=`<th style="text-align:center;font-size:9px;color:var(--text3);padding:3px 0;width:18px;${mo.m===1?'border-left:2px solid #cbd5e1':''}">${mo.m}</th>`);
+  h+='</tr></thead><tbody>';
+  GANTT_ROWS.forEach(r=>{
+    h+='<tr>';
+    if(r.g){
+      h+=`<td class="g-lbl grp">${r.label}</td><td class="g-w grp">${r.w}</td>`;
+      MOS.forEach(()=>h+='<td class="g-cell gc-grp"></td>');
+    } else {
+      h+=`<td class="g-lbl sub">${r.label}</td><td class="g-w">${r.w}</td>`;
+      MOS.forEach((mo,i)=>{
+        const key=r.label+'_'+i;
+        const inA=actSet.has(key), inP=r.plan.includes(i);
+        const cl=inA?'gc-actual':inP?`gc-${r.cls}`:'';
+        const bl=mo.m===1?'border-left:2px solid #e2e8f0;':'';
+        const clickable=isPM&&inP?`onclick="toggleActual('${r.label}',${i})" title="클릭: 실적 입력/해제"`:'';
+        h+=`<td class="g-cell ${cl}" style="${bl}" ${clickable}></td>`;
+      });
+    }
+    h+='</tr>';
+  });
+  h+='</tbody>';
+  tbl.innerHTML=h;
+}
+
+async function saveGanttActual(){
+  const gantt=lload(SK.gantt,[]);
+  setSyncStatus('loading','저장 중...');
+  await postToSheets('saveGantt', gantt.map(g=>({'공정명':g.공정명,'연도':g.y,'월':g.m})));
+  setSyncStatus('ok','간트 실적 저장 완료');
+  alert('✅ 간트 실적이 Google Sheets에 저장되었습니다.');
+}
+
+// ── 03. 차트 ─────────────────────────────────────────────────
+function buildCharts(){
+  const labels=['25.9','25.10','25.11','25.12','26.1','26.2','26.3','26.4','26.5','26.6','26.7','26.8','26.9','26.10','26.11','26.12'];
+  const plan=[0,1,2,3,3,3,3,2,2,0,0,0,0,0,1,1];
+  const actual=[0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+  const cumP=[0,1,3,6,9,12,15,17,19,19,19,19,19,19,20,21];
+  const cumA=[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+  new Chart(document.getElementById('chart-monthly'),{type:'bar',data:{labels,datasets:[
+    {label:'계획율(%)',data:plan,backgroundColor:'#2563eb44',borderColor:'#2563eb',borderWidth:1},
+    {label:'실적율(%)',data:actual,backgroundColor:'#05966999',borderColor:'#059669',borderWidth:1},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}}});
+  new Chart(document.getElementById('chart-cumul'),{type:'line',data:{labels,datasets:[
+    {label:'누계 계획',data:cumP,borderColor:'#2563eb',backgroundColor:'#2563eb11',tension:.3,fill:true,borderWidth:2,pointRadius:2},
+    {label:'누계 실적',data:cumA,borderColor:'#059669',backgroundColor:'#05966911',tension:.3,fill:true,borderWidth:2,pointRadius:2},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{font:{size:9}}},y:{min:0,max:100,ticks:{font:{size:9}}}}}});
+  new Chart(document.getElementById('chart-weight'),{type:'doughnut',data:{
+    labels:['Vendor Print 20%','Sub-order 10%','Material 10%','Fabrication 40%','I&D 20%'],
+    datasets:[{data:[20,10,10,40,20],backgroundColor:['#2563eb','#059669','#d97706','#7c3aed','#db2777'],borderWidth:2,borderColor:'#fff'}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  const ms=lload(SK.milestone,MILESTONE_DEF);
+  document.getElementById('milestones').innerHTML=ms.map(m=>`
+    <div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid #f1f5f9">
+      <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${m.완료여부==='완료'?'#059669':m.비고&&m.비고.includes('⚠')?'#dc2626':'#cbd5e1'}"></div>
+      <div style="font-size:11px;color:#64748b;min-width:78px;flex-shrink:0">${m.날짜}</div>
+      <div style="font-size:12px;font-weight:${m.비고&&m.비고.includes('⚠')?600:400};color:${m.비고&&m.비고.includes('⚠')?'#dc2626':m.완료여부==='완료'?'#059669':'var(--text)'}">${m.마일스톤}${m.비고&&m.비고.includes('⚠')?' ⚠':''}</div>
+      <div style="margin-left:auto;font-size:10px;padding:1px 7px;border-radius:99px;background:${m.완료여부==='완료'?'#d1fae5':'#f1f5f9'};color:${m.완료여부==='완료'?'#065f46':'#94a3b8'}">${m.완료여부}</div>
+    </div>`).join('');
+}
+
+// ── 04. 시험 ─────────────────────────────────────────────────
+function buildTest(){
+  const TEST=[
+    {head:'설계시험 D-1~D-10',hBg:'#fef3c7',hTc:'#92400e',items:[['D-1','절연내력 시험'],['D-2','정격 연속전류 시험'],['D-3','단시간 전류 내력 시험'],['D-4','순시 전류 시험'],['D-5','기계적 내구성 시험'],['D-6','절연재 난연·내균열 시험'],['D-7','적용절연재 난연 시험'],['D-8','도장 자격 시험 (ASTM D3359)'],['D-9','계기용 변압기 시험'],['D-10','내진 시험 ⚠ Class 1E']]},
+    {head:'생산시험 P-1~P-5',hBg:'#d1fae5',hTc:'#065f46',items:[['P-1','상용주파 내전압 시험'],['P-2','기계적 동작 시험'],['P-3','계기용변압기 케이스 접지시험'],['P-4','전기동작·제어배선 시험'],['P-5','계기용 변압기 시험 (D-9 외)']]},
+    {head:'EQ 기기검증 시험',hBg:'#fce7f3',hTc:'#9d174d',items:[['EQ-1','내진해석 (Cat.II) — 6개월'],['EQ-2','내진시험 Safety Class Q'],['EQ-3','내진시험 Safety Class A'],['EQ-4','BSLS 저전자파시험 — 12주'],['EQ-5','열노화 / 방사선노화'],['EQ-6','진동노화 / DBE 시험'],['EQ-7','Post-DBE 시험'],['EQ-8','분해 및 최종 검사']]},
+    {head:'EMC / EMI·RFI·SWC 시험',hBg:'#ede9fe',hTc:'#4c1d95',items:[['E-1','전자기 적합성 시험 (EMC)'],['E-2','서지 내력 시험 (SWC)'],['E-3','방사 EMI/RFI 내력 시험'],['E-4','정전기 방전 시험 (ESD)']]},
+  ];
+  document.getElementById('test-grid').innerHTML=TEST.map(g=>`
+    <div class="test-card">
+      <div class="test-hd" style="background:${g.hBg};color:${g.hTc}">${g.head}</div>
+      <div class="test-body">${g.items.map(([c,n])=>`<div class="test-row"><span>${n}</span><span class="test-code" style="background:${g.hBg};color:${g.hTc}">${c}</span></div>`).join('')}</div>
+    </div>`).join('');
+}
+
+// ── 05. DDSS ─────────────────────────────────────────────────
+let ddssFilter='전체';
+function renderDdss(){
+  const data=lload(SK.ddss,DDSS_DEF);
+  const sts=['전체','미착수','진행중','제출완료','승인완료','반려/재제출'];
+  const cnt=Object.fromEntries(sts.slice(1).map(s=>[s,data.filter(d=>d.상태===s).length]));
+  document.getElementById('ddss-filters').innerHTML=sts.map(s=>`<button class="fbtn${ddssFilter===s?' on':''}" onclick="setDdssF('${s}')">${s}${s!=='전체'&&cnt[s]?` (${cnt[s]})`:''}</button>`).join('');
+  const rows=ddssFilter==='전체'?data:data.filter(d=>d.상태===ddssFilter);
+  document.getElementById('ddss-tbl').innerHTML=`<thead><tr><th>코드</th><th>문서명</th><th>기기</th><th>R/I</th><th>예정일</th><th>상태</th>${isPM?'<th>변경</th><th>삭제</th>':''}</tr></thead>
+    <tbody>${rows.map((d,ri)=>{
+      const realIdx=data.indexOf(d);
+      return `<tr>
+        <td class="tbl-code">${d.코드}</td>
+        <td>${d.문서명}</td>
+        <td><span style="font-size:10px;padding:1px 7px;border-radius:5px;background:#f1f5f9;color:#475569">${d.기기}</span></td>
+        <td style="text-align:center;font-weight:700;color:${d['R/I']==='R'?'#2563eb':'#059669'}">${d['R/I']}</td>
+        <td style="font-size:11px;color:var(--text2);white-space:nowrap">${d.예정일}</td>
+        <td>${bdg(d.상태)}</td>
+        ${isPM?`<td><select onchange="updDdss(${realIdx},this.value)" style="font-size:10px;padding:3px 4px;border:1px solid var(--border);border-radius:5px">
+          ${['미착수','진행중','제출완료','승인완료','반려/재제출'].map(s=>`<option${d.상태===s?' selected':''}>${s}</option>`).join('')}</select></td>
+          <td><button class="btn-danger btn-sm" onclick="delDdss(${realIdx})">삭제</button></td>`:''}
+      </tr>`;
+    }).join('')}</tbody>`;
+}
+function setDdssF(s){ddssFilter=s;renderDdss();}
+function updDdss(idx,val){const d=lload(SK.ddss,DDSS_DEF);d[idx].상태=val;lsave(SK.ddss,d);renderDdss();syncDdss();}
+function delDdss(idx){if(!confirm('삭제하시겠습니까?'))return;const d=lload(SK.ddss,DDSS_DEF);d.splice(idx,1);lsave(SK.ddss,d);renderDdss();syncDdss();}
+function addDdss(){
+  const d=lload(SK.ddss,DDSS_DEF);
+  d.push({코드:document.getElementById('dc').value,문서명:document.getElementById('dn').value,기기:document.getElementById('deq').value,'R/I':document.getElementById('dri').value,예정일:document.getElementById('ddue').value,상태:document.getElementById('dst').value,비고:document.getElementById('dbk').value});
+  lsave(SK.ddss,d);renderDdss();syncDdss();
+  document.getElementById('ddss-form').style.display='none';
+  ['dc','dn','ddue','dbk'].forEach(id=>document.getElementById(id).value='');
+}
+async function syncDdss(){
+  const d=lload(SK.ddss,DDSS_DEF);
+  await postToSheets('saveDdss',d.map(r=>({'코드':r.코드,'문서명':r.문서명,'기기':r.기기,'R/I':r['R/I'],'예정일':r.예정일,'상태':r.상태,'비고':r.비고||''})));
+}
+
+// ── 06. 이슈 ─────────────────────────────────────────────────
+let issFilter='전체';
+function renderIssues(){
+  const data=lload(SK.issues,ISSUES_DEF);
+  const lvs=['전체','긴급','주의','정상'];
+  const cnt=Object.fromEntries(lvs.slice(1).map(l=>[l,data.filter(d=>d.긴급도===l).length]));
+  const icon={'긴급':'🔴','주의':'🟡','정상':'🟢'};
+  document.getElementById('issue-filters').innerHTML=lvs.map(l=>`<button class="fbtn${issFilter===l?' on':''}" onclick="setIssF('${l}')">${l!=='전체'?icon[l]+' ':''}${l}${l!=='전체'&&cnt[l]?` (${cnt[l]})`:''}</button>`).join('');
+  const rows=issFilter==='전체'?data:data.filter(d=>d.긴급도===issFilter);
+  document.getElementById('issue-list').innerHTML=rows.map((d,ri)=>{
+    const realIdx=data.indexOf(d);
+    const lm=LM[d.긴급도]||LM['정상'];
+    return `<div class="issue-card" style="border-left-color:${lm.border}">
+      <div class="issue-head">
+        <div>
+          <span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:5px;background:${lm.bg};color:${lm.tc};margin-right:5px">${d.긴급도}</span>
+          <span style="font-size:11px;color:var(--text3)">${d.분류}</span>
+          <div class="issue-title">${d.이슈제목}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+          ${bdg(d.상태)}
+          ${isPM?`<select onchange="updIss(${realIdx},this.value)" style="font-size:10px;padding:3px 4px;border:1px solid var(--border);border-radius:5px">
+            ${['미조치','조치중','조치완료','모니터링'].map(s=>`<option${d.상태===s?' selected':''}>${s}</option>`).join('')}</select>
+            <button class="btn-danger btn-sm" onclick="delIss(${realIdx})">삭제</button>`:''}
+        </div>
+      </div>
+      <div class="issue-desc">${d.상세내용}</div>
+      <div class="issue-action"><strong style="color:var(--text2)">조치 계획:</strong> ${d.조치계획}</div>
+      <div class="issue-meta">
+        <span style="font-size:11px;color:var(--text3)">👤 ${d.담당자}</span>
+        <span style="font-size:11px;color:var(--text3)">📅 ${d.목표기한}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function setIssF(l){issFilter=l;renderIssues();}
+function updIss(idx,val){const d=lload(SK.issues,ISSUES_DEF);d[idx].상태=val;lsave(SK.issues,d);renderIssues();syncIssues();}
+function delIss(idx){if(!confirm('삭제하시겠습니까?'))return;const d=lload(SK.issues,ISSUES_DEF);d.splice(idx,1);lsave(SK.issues,d);renderIssues();syncIssues();}
+function addIssue(){
+  const d=lload(SK.issues,ISSUES_DEF);
+  d.push({긴급도:document.getElementById('ilv').value,분류:document.getElementById('icat').value,이슈제목:document.getElementById('ititle').value,상세내용:document.getElementById('idesc').value,조치계획:document.getElementById('iaction').value,담당자:document.getElementById('iowner').value,목표기한:document.getElementById('idue').value,상태:document.getElementById('ist').value});
+  lsave(SK.issues,d);renderIssues();syncIssues();
+  document.getElementById('issue-form').style.display='none';
+  ['icat','ititle','idesc','iaction','iowner','idue'].forEach(id=>document.getElementById(id).value='');
+}
+async function syncIssues(){
+  const d=lload(SK.issues,ISSUES_DEF);
+  await postToSheets('saveIssues',d.map(r=>({'긴급도':r.긴급도,'분류':r.분류,'이슈 제목':r.이슈제목,'상세 내용':r.상세내용,'조치 계획':r.조치계획,'담당자':r.담당자,'목표기한':r.목표기한,'상태':r.상태})));
+}
+
+// ── 공통 ─────────────────────────────────────────────────────
+function togglePanel(id){const f=document.getElementById(id);f.style.display=f.style.display==='none'?'block':'none';}
+function renderAll(){renderOverview();renderDdss();renderIssues();}
+
+// ── 초기 실행 ─────────────────────────────────────────────────
+renderAll();
+if(API_URL) loadFromSheets();
+else setSyncStatus('idle','로컬 모드 (Sheets 미연결)');
+</script>
+</body>
+</html>
