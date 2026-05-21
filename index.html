@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ARA 연구로 UE207 — 프로젝트 관리 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#f4f6fa;--card:#fff;--nav:#1e3a8a;
+  --accent:#2563eb;--green:#059669;--amber:#d97706;--red:#dc2626;--purple:#7c3aed;--pink:#db2777;
+  --text:#1e293b;--text2:#475569;--text3:#94a3b8;
+  --border:#e2e8f0;--radius:12px;--shadow:0 1px 3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+.nav{background:var(--nav);padding:0 18px;display:flex;align-items:center;height:50px;position:sticky;top:0;z-index:100;gap:0}
+.nav-brand{color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;margin-right:18px;white-space:nowrap;flex-shrink:0}
+.nav-brand em{background:#2563eb;color:#fff;font-style:normal;font-size:10px;padding:2px 6px;border-radius:4px}
+.nav-tabs{display:flex;gap:0;overflow-x:auto;flex:1}
+.nav-tab{color:#93c5fd;font-size:11px;padding:0 12px;height:50px;display:flex;align-items:center;cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;white-space:nowrap;transition:all .12s;font-weight:500;flex-shrink:0}
+.nav-tab:hover{color:#fff;background:rgba(255,255,255,.07)}
+.nav-tab.on{color:#fff;border-bottom-color:#60a5fa;background:rgba(255,255,255,.1)}
+.nav-r{display:flex;align-items:center;gap:7px;margin-left:auto;flex-shrink:0}
+.sync-wrap{display:flex;align-items:center;gap:4px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#94a3b8}
+.sync-txt{font-size:10px;color:#93c5fd;white-space:nowrap}
+.btn-reload{background:transparent;border:1px solid #60a5fa;color:#93c5fd;border-radius:5px;padding:3px 8px;font-size:10px;cursor:pointer}
+.btn-pm{background:#2563eb;color:#fff;border:none;padding:4px 11px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer}
+.btn-pm.on{background:#059669}
+.main{flex:1;padding:18px;max-width:1400px;width:100%;margin:0 auto}
+.sec{display:none}.sec.on{display:block}
+.sec-label{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.sec-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px}
+.sec-desc{font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.5}
+.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;box-shadow:var(--shadow)}
+.ct{font-size:11px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.ctd{width:7px;height:7px;border-radius:50%}
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}
+.kpi{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:12px;box-shadow:var(--shadow);border-top:3px solid}
+.kl{font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
+.kv{font-size:18px;font-weight:700;color:var(--text);margin-bottom:2px}
+.ks{font-size:10px;color:var(--text3)}
+.kb{height:3px;background:#e2e8f0;border-radius:99px;margin-top:4px}
+.kbf{height:3px;border-radius:99px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600}
+.bd{width:5px;height:5px;border-radius:50%}
+/* 간트 */
+.gantt-wrap{overflow-x:auto}
+.gtbl{border-collapse:collapse;font-size:10px;white-space:nowrap}
+.gtbl th{background:#f8fafc;color:var(--text3);font-weight:600;font-size:9px;padding:4px 2px;border:1px solid var(--border);text-align:center}
+.gtbl td{border:1px solid var(--border);padding:0;height:20px;vertical-align:middle}
+.gl{padding:0 5px;font-size:10px}
+.gl.grp{background:#1e3a8a;color:#fff;font-weight:600;min-width:170px}
+.gl.sub{padding-left:12px;color:var(--text2);background:#fafbfc;min-width:170px}
+.gw{width:32px;text-align:center;font-size:9px;background:#f8fafc;color:var(--text3)}
+.gw.grp{background:#1e3a8a;color:#93c5fd;font-weight:600}
+.gc{width:15px;height:20px;padding:0}
+.gc.cp{background:#2563eb33}.gc.ca{background:#059669}
+.gc.ceq{background:#db277733}.gc.cds{background:#d9770633}
+.gc.cqa{background:#7c3aed33}.gc.cdl{background:#05966933}
+.gc.cgrp{background:#1e3a8a}
+/* 테이블 */
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{background:#f8fafc;padding:7px 8px;text-align:left;font-size:10px;font-weight:600;color:var(--text2);border-bottom:2px solid var(--border)}
+.tbl td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.tbl tr:hover td{background:#f8fafc}
+.tc{font-weight:700;color:var(--accent)}
+/* VPIS 경고 */
+.warn-15{background:#fef3c7!important}
+.warn-10{background:#fed7aa!important}
+.warn-5{background:#fecaca!important}
+.warn-over{background:#fee2e2!important;color:#991b1b}
+.warn-badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:5px}
+.wb-15{background:#fef3c7;color:#92400e}
+.wb-10{background:#fed7aa;color:#9a3412}
+.wb-5{background:#fecaca;color:#991b1b}
+.wb-over{background:#fee2e2;color:#991b1b}
+/* 이슈 */
+.ic{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;margin-bottom:7px;box-shadow:var(--shadow);border-left:4px solid}
+.ic-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:5px;gap:9px}
+.ic-title{font-size:11px;font-weight:600;color:var(--text);line-height:1.4;margin-top:3px}
+.ic-desc{font-size:10px;color:var(--text2);margin-bottom:5px;line-height:1.5}
+.ic-act{font-size:10px;color:var(--text2);background:#f8fafc;border-radius:5px;padding:5px 7px;line-height:1.5}
+.ic-meta{display:flex;gap:9px;margin-top:6px;font-size:10px;color:var(--text3)}
+/* 필터 */
+.frow{display:flex;gap:5px;flex-wrap:wrap}
+.fbtn{padding:3px 10px;border-radius:99px;border:1px solid var(--border);background:#fff;color:var(--text2);font-size:10px;cursor:pointer;font-weight:600;transition:all .1s}
+.fbtn:hover{border-color:var(--accent);color:var(--accent)}
+.fbtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* PM 폼 */
+.pm-panel{border:1px solid #bfdbfe;border-radius:var(--radius);padding:12px;background:#eff6ff;margin-bottom:11px}
+.pm-pt{font-size:11px;font-weight:700;color:var(--accent);margin-bottom:9px}
+.pm-row{display:flex;gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap}
+.pm-row label{font-size:10px;color:var(--text2);min-width:55px;font-weight:600;flex-shrink:0}
+.pm-row input,.pm-row select,.pm-row textarea{font-size:11px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:#fff;color:var(--text);flex:1;min-width:80px}
+.pm-row textarea{resize:vertical;min-height:40px}
+.btn-pri{background:var(--accent);color:#fff;border:none;padding:5px 13px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer}
+.btn-pri:hover{background:#1d4ed8}
+.btn-del{background:var(--red);color:#fff;border:none;padding:2px 7px;border-radius:4px;font-size:9px;cursor:pointer}
+.btn-tog{font-size:10px;color:var(--accent);cursor:pointer;border:1px solid var(--accent);background:#fff;padding:3px 9px;border-radius:5px;font-weight:600}
+.ed{border:none;background:transparent;font-size:inherit;color:inherit;width:50px;text-align:center;font-weight:inherit;font-family:inherit}
+.ed:focus{background:#eff6ff;border-radius:3px;outline:2px solid var(--accent)}
+.ed-w{width:100%;min-width:70px}
+.ch{position:relative;height:230px;margin-bottom:11px}
+.ch-sm{position:relative;height:170px}
+.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:14px;padding:20px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal-t{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px}
+.modal input{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:9px}
+.modal-btns{display:flex;gap:7px;justify-content:flex-end}
+.btn-sm{font-size:10px;padding:4px 10px;border-radius:5px;border:none;cursor:pointer;font-weight:600}
+.vpis-search{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-bottom:10px}
+@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.g2,.g3,.g4{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand"><em>UE207</em>ARA 연구로 프로젝트 관리</div>
+  <div class="nav-tabs">
+    <button class="nav-tab on" onclick="go(0,this)">01. 개요</button>
+    <button class="nav-tab" onclick="go(1,this)">02. 마스터 스케줄</button>
+    <button class="nav-tab" onclick="go(2,this)">03. 공정 그래프</button>
+    <button class="nav-tab" onclick="go(3,this)">04. EQ / 시험</button>
+    <button class="nav-tab" onclick="go(4,this)">05. DDSS / VPIS ⚠</button>
+    <button class="nav-tab" onclick="go(5,this)">06. 이슈 관리</button>
+  </div>
+  <div class="nav-r">
+    <div class="sync-wrap"><div class="sync-dot" id="sdot"></div><span class="sync-txt" id="stxt">연결 대기</span></div>
+    <button class="btn-reload" onclick="forceReload()" id="rbtn">🔄</button>
+    <button class="btn-pm" id="pm-btn" onclick="toggleLogin()">PM 로그인</button>
+  </div>
+</nav>
+
+<div class="modal-bg" id="login-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-t">🔒 PM 로그인</div>
+    <input type="password" id="pw-in" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="pw-err" style="font-size:10px;color:var(--red);margin-bottom:7px;display:none">비밀번호 오류</div>
+    <div class="modal-btns">
+      <button class="btn-sm" style="background:#f1f5f9;color:var(--text2)" onclick="document.getElementById('login-modal').style.display='none'">취소</button>
+      <button class="btn-sm" style="background:var(--accent);color:#fff" onclick="doLogin()">로그인</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- 01 개요 -->
+<div class="sec on" id="sec0">
+  <div class="sec-label">Section 01</div>
+  <div class="sec-title">프로젝트 개요</div>
+  <div class="sec-desc">ARA 연구로 22.9kV/4.16kV 고압차단기반(UE207) | 계약번호: R092500097 | (주)대산이엔씨</div>
+  <div id="kpi-grid" class="kpi-grid"></div>
+  <div class="g2">
+    <div class="card"><div class="ct"><div class="ctd" style="background:var(--accent)"></div>공정별 진행률</div><div id="prog-tbl"></div></div>
+    <div class="card"><div class="ct"><div class="ctd" style="background:var(--red)"></div>주요 이슈 요약</div><div id="iss-summary"></div></div>
+  </div>
+  <div class="g4" id="dev-cards"></div>
+</div>
+
+<!-- 02 마스터 스케줄 -->
+<div class="sec" id="sec1">
+  <div class="sec-label">Section 02</div>
+  <div class="sec-title">마스터 스케줄</div>
+  <div class="sec-desc" id="gantt-desc">2025.09 ~ 2031.03 전체 공정 간트차트 (원본 마스터 스케줄 기반)</div>
+  <div class="card">
+    <div style="display:flex;gap:11px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+      <span style="font-size:10px;display:flex;align-items:center;gap:3px"><span style="width:11px;height:8px;border-radius:2px;background:#2563eb55;display:inline-block"></span>계획</span>
+      <span style="font-size:10px;display:flex;align-items:center;gap:3px"><span style="width:11px;height:8px;border-radius:2px;background:#059669;display:inline-block"></span>실적</span>
+      <span style="font-size:10px;display:flex;align-items:center;gap:3px"><span style="width:11px;height:8px;border-radius:2px;background:#db277733;display:inline-block"></span>EQ시험</span>
+      <span style="font-size:10px;display:flex;align-items:center;gap:3px"><span style="width:11px;height:8px;border-radius:2px;background:#d9770633;display:inline-block"></span>설계시험</span>
+      <span style="font-size:10px;display:flex;align-items:center;gap:3px"><span style="width:11px;height:8px;border-radius:2px;background:#7c3aed33;display:inline-block"></span>QA/검사</span>
+      <span style="font-size:10px;display:flex;align-items:center;gap:3px"><span style="width:11px;height:8px;border-radius:2px;background:#05966933;display:inline-block"></span>납품</span>
+      <span id="gantt-pm-hint" style="display:none;color:var(--accent);font-size:10px;font-weight:600">✏️ 계획 셀 클릭 → 실적 토글</span>
+      <button id="gantt-save" class="btn-pri" style="display:none;margin-left:auto;font-size:10px;padding:3px 10px" onclick="saveGanttAct()">💾 실적 저장</button>
+    </div>
+    <div class="gantt-wrap"><table class="gtbl" id="gtbl"></table></div>
+  </div>
+</div>
+
+<!-- 03 공정 그래프 -->
+<div class="sec" id="sec2">
+  <div class="sec-label">Section 03</div>
+  <div class="sec-title">공정 그래프</div>
+  <div class="sec-desc">원본 마스터 스케줄 기반 월별 계획/실적율 <span id="graph-hint" style="display:none;color:var(--accent);font-size:11px;font-weight:600">✏️ PM: 아래 표에서 수치 수정 가능</span></div>
+  <div class="g2">
+    <div class="card"><div class="ct"><div class="ctd" style="background:var(--accent)"></div>월간 계획 vs 실적율 (%)</div><div class="ch"><canvas id="ch-monthly"></canvas></div></div>
+    <div class="card"><div class="ct"><div class="ctd" style="background:var(--purple)"></div>누계 계획 vs 실적율 (%)</div><div class="ch"><canvas id="ch-cumul"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ct"><div class="ctd" style="background:var(--green)"></div>공정별 가중치</div><div class="ch-sm"><canvas id="ch-weight"></canvas></div></div>
+    <div class="card"><div class="ct"><div class="ctd" style="background:var(--amber)"></div>주요 마일스톤</div><div id="milestones"></div></div>
+  </div>
+  <div id="monthly-edit-wrap" style="display:none">
+    <div class="card" style="margin-top:11px">
+      <div class="ct"><div class="ctd" style="background:var(--accent)"></div>월별 공정율 수정 (PM 전용)
+        <button class="btn-pri" style="margin-left:auto;font-size:10px;padding:3px 9px" onclick="saveMonthly()">💾 저장</button>
+      </div>
+      <div style="overflow-x:auto"><table class="tbl" id="monthly-tbl"></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- 04 EQ / 시험 -->
+<div class="sec" id="sec3">
+  <div class="sec-label">Section 04</div>
+  <div class="sec-title">EQ / 시험 현황</div>
+  <div class="sec-desc">기기검증(EQ) 및 설계·생산·EMC 시험 항목 상태 관리</div>
+  <div class="g4" style="margin-bottom:11px">
+    <div class="card" style="text-align:center;border-top:3px solid var(--pink)"><div class="kl">EQ 계획서 (EP-A)</div><div style="font-size:14px;font-weight:700;color:var(--pink);margin:4px 0">미착수</div><div class="ks">기한: 2025.12.20</div></div>
+    <div class="card" style="text-align:center;border-top:3px solid var(--amber)"><div class="kl">내진시험 착수</div><div style="font-size:14px;font-weight:700;color:var(--amber);margin:4px 0">2026.01</div><div class="ks">Prototype 기준</div></div>
+    <div class="card" style="text-align:center;border-top:3px solid var(--purple)"><div class="kl">EQ 보고서 (ER-A)</div><div style="font-size:14px;font-weight:700;color:var(--purple);margin:4px 0">2027.07</div><div class="ks">FB-16주 전 제출</div></div>
+    <div class="card" style="text-align:center;border-top:3px solid var(--red)"><div class="kl">EQ 기관 선정</div><div style="font-size:14px;font-weight:700;color:var(--red);margin:4px 0">⚠ 미착수</div><div class="ks">긴급 처리 필요</div></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+    <div class="frow" id="eq-filters"></div>
+    <div id="eq-pm-btns" style="display:none;gap:6px;display:none">
+      <button class="btn-tog" onclick="toggleP('eq-form')">+ 추가</button>
+      <button class="btn-pri" style="font-size:10px;padding:3px 9px" onclick="saveEq()">💾 저장</button>
+    </div>
+  </div>
+  <div class="pm-panel" id="eq-form" style="display:none">
+    <div class="pm-pt">시험 항목 추가</div>
+    <div class="pm-row"><label>코드</label><input id="eq-code" placeholder="D-11">
+      <label style="min-width:25px">분류</label><select id="eq-cat"><option>설계시험</option><option>생산시험</option><option>EQ기기검증</option><option>EMC시험</option></select></div>
+    <div class="pm-row"><label>항목명</label><input id="eq-name" placeholder="시험 항목명"></div>
+    <div class="pm-row"><label>상태</label><select id="eq-st"><option>미착수</option><option>계획수립</option><option>진행중</option><option>완료</option></select>
+      <label style="min-width:25px">담당</label><input id="eq-owner" placeholder="담당팀" style="flex:1"></div>
+    <button class="btn-pri" onclick="addEqItem()">추가</button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table class="tbl" id="eq-tbl"></table></div></div>
+</div>
+
+<!-- 05 DDSS / VPIS -->
+<div class="sec" id="sec4">
+  <div class="sec-label">Section 05</div>
+  <div class="sec-title">문서 제출 현황 (DDSS / VPIS)</div>
+  <div class="sec-desc">
+    <span style="background:#fecaca;color:#991b1b;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700">D-5 이내</span>
+    <span style="background:#fed7aa;color:#9a3412;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:5px">D-10 이내</span>
+    <span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:5px">D-15 이내</span>
+    &nbsp;색상 = 마감일 임박 경고 | 기준일: <span id="today-display"></span>
+  </div>
+
+  <!-- 경고 요약 카드 -->
+  <div class="g4" id="vpis-warn-cards" style="margin-bottom:11px"></div>
+
+  <!-- VPIS 탭 -->
+  <div style="display:flex;gap:8px;margin-bottom:10px;border-bottom:1.5px solid var(--border);padding-bottom:0">
+    <button class="fbtn on" id="vtab-vpis" onclick="switchVTab('vpis',this)" style="border-radius:6px 6px 0 0">📋 VPIS 전체 문서</button>
+    <button class="fbtn" id="vtab-ddss" onclick="switchVTab('ddss',this)" style="border-radius:6px 6px 0 0">📄 DDSS 관리</button>
+  </div>
+
+  <!-- VPIS 뷰 -->
+  <div id="vpis-view">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+      <div class="frow" id="vpis-filters"></div>
+      <input class="vpis-search" id="vpis-search" placeholder="🔍 문서번호·제목 검색..." style="width:220px;margin-bottom:0" oninput="renderVpis()">
+    </div>
+    <div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table class="tbl" id="vpis-tbl"></table></div></div>
+    <div id="vpis-pagination" style="display:flex;gap:5px;justify-content:center;margin-top:10px;flex-wrap:wrap"></div>
+  </div>
+
+  <!-- DDSS 뷰 -->
+  <div id="ddss-view" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+      <div class="frow" id="ddss-filters"></div>
+      <div id="ddss-pm-btns" style="display:none"><button class="btn-tog" onclick="toggleP('ddss-form')">+ 추가</button></div>
+    </div>
+    <div class="pm-panel" id="ddss-form" style="display:none">
+      <div class="pm-pt">문서 추가</div>
+      <div class="pm-row"><label>코드</label><input id="dc" placeholder="TP-A">
+        <label style="min-width:20px">기기</label><select id="deq"><option>22.9kV</option><option>4.16kV</option><option>FR</option><option>3종</option></select>
+        <label style="min-width:20px">R/I</label><select id="dri"><option>R</option><option>I</option></select></div>
+      <div class="pm-row"><label>문서명</label><input id="dn"></div>
+      <div class="pm-row"><label>예정일</label><input id="ddue" placeholder="2026.01.20">
+        <label style="min-width:25px">상태</label><select id="dst"><option>미착수</option><option>진행중</option><option>제출완료</option><option>승인완료</option></select></div>
+      <button class="btn-pri" onclick="addDdss()">추가</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table class="tbl" id="ddss-tbl"></table></div></div>
+  </div>
+</div>
+
+<!-- 06 이슈 -->
+<div class="sec" id="sec5">
+  <div class="sec-label">Section 06</div>
+  <div class="sec-title">이슈 관리</div>
+  <div class="sec-desc">프로젝트 이슈 등록·추적·조치 현황</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+    <div class="frow" id="iss-filters"></div>
+    <div id="iss-pm-btns" style="display:none"><button class="btn-tog" onclick="toggleP('iss-form')">+ 등록</button></div>
+  </div>
+  <div class="pm-panel" id="iss-form" style="display:none">
+    <div class="pm-pt">이슈 등록</div>
+    <div class="pm-row"><label>긴급도</label><select id="ilv"><option>긴급</option><option>주의</option><option>정상</option></select>
+      <label style="min-width:25px">분류</label><input id="icat" placeholder="조달/설계/EQ" style="flex:1"></div>
+    <div class="pm-row"><label>이슈 제목</label><input id="ititle"></div>
+    <div class="pm-row"><label>상세 내용</label><textarea id="idesc"></textarea></div>
+    <div class="pm-row"><label>조치 계획</label><textarea id="iaction"></textarea></div>
+    <div class="pm-row"><label>담당자</label><input id="iowner">
+      <label style="min-width:40px">목표기한</label><input id="idue" placeholder="2025.12.31" style="flex:1"></div>
+    <div class="pm-row"><label>상태</label><select id="ist"><option>미조치</option><option>조치중</option><option>조치완료</option><option>모니터링</option></select></div>
+    <button class="btn-pri" onclick="addIssue()">등록</button>
+  </div>
+  <div id="iss-list"></div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+const GANTT_ROWS_DEFAULT = [{"g": 1, "label": "Vendor Print (20%)", "w": "20%", "plan": [], "cls": "p"}, {"g": 0, "label": "공급자도서(문서,도면) 작성", "w": "", "plan": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59], "actual": [2, 3, 4, 5, 6, 7], "cls": "p"}, {"g": 0, "label": "공급자도서 제출", "w": "", "plan": [3, 4, 5, 6, 7, 8, 9, 10, 14, 15, 18, 25, 27, 32, 42, 54, 58, 59], "actual": [3, 4, 5, 6, 7], "cls": "p"}, {"g": 1, "label": "Sub-order Placement (10%)", "w": "10%", "plan": [], "cls": "p"}, {"g": 0, "label": "자재 발주", "w": "", "plan": [1, 2, 3, 5, 6, 11, 12, 13, 14, 15, 16, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 39, 48], "actual": [1, 2, 3, 5, 6], "cls": "p"}, {"g": 1, "label": "Material Receiving (10%)", "w": "10%", "plan": [], "cls": "p"}, {"g": 0, "label": "자재 입고", "w": "", "plan": [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 33, 34, 35, 36, 38, 40, 48], "actual": [], "cls": "p"}, {"g": 1, "label": "Fabrication (30%)", "w": "40%", "plan": [], "cls": "p"}, {"g": 0, "label": "조립 및 제작", "w": "", "plan": [28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 50, 51, 52, 53], "actual": [], "cls": "p"}, {"g": 1, "label": "Inspection & Delivery (20%)", "w": "20%", "plan": [], "cls": "p"}, {"g": 0, "label": "자체 시험", "w": "", "plan": [36, 37, 38, 39, 40, 43, 44, 53], "actual": [], "cls": "qa"}, {"g": 0, "label": "입회 검사", "w": "", "plan": [36, 37, 38, 39, 40, 42, 43, 44, 54], "actual": [], "cls": "qa"}, {"g": 0, "label": "납품", "w": "", "plan": [37, 39, 43, 44, 55], "actual": [], "cls": "dl"}, {"g": 1, "label": "Installation & Commissioning (0%)", "w": "0%", "plan": [], "cls": "p"}, {"g": 0, "label": "설치", "w": "", "plan": [], "actual": [], "cls": "p"}, {"g": 0, "label": "시험", "w": "", "plan": [], "actual": [], "cls": "p"}];
+const MONTHLY_DEFAULT = [{"year": 2025, "month": 9, "plan": 0.0, "actual": 0.0, "cumul_plan": 0.0, "cumul_actual": 0.0}, {"year": 2025, "month": 10, "plan": 1.0, "actual": 1.0, "cumul_plan": 1.0, "cumul_actual": 1.0}, {"year": 2025, "month": 11, "plan": 2.0, "actual": 2.0, "cumul_plan": 3.0, "cumul_actual": 3.0}, {"year": 2025, "month": 12, "plan": 3.0, "actual": 3.0, "cumul_plan": 6.0, "cumul_actual": 6.0}, {"year": 2026, "month": 1, "plan": 2.0, "actual": 2.0, "cumul_plan": 8.0, "cumul_actual": 8.0}, {"year": 2026, "month": 2, "plan": 2.9, "actual": 2.9, "cumul_plan": 10.9, "cumul_actual": 10.9}, {"year": 2026, "month": 3, "plan": 1.4, "actual": 1.0, "cumul_plan": 12.3, "cumul_actual": 11.9}, {"year": 2026, "month": 4, "plan": 0.3, "actual": 0.4, "cumul_plan": 12.6, "cumul_actual": 12.3}, {"year": 2026, "month": 5, "plan": 0.3, "actual": 0.0, "cumul_plan": 12.9, "cumul_actual": 12.3}, {"year": 2026, "month": 6, "plan": 0.3, "actual": 0.0, "cumul_plan": 13.2, "cumul_actual": 12.3}, {"year": 2026, "month": 7, "plan": 0.3, "actual": 0.0, "cumul_plan": 13.5, "cumul_actual": 12.3}, {"year": 2026, "month": 8, "plan": 0.4, "actual": 0.0, "cumul_plan": 13.9, "cumul_actual": 12.3}, {"year": 2026, "month": 9, "plan": 0.4, "actual": 0.0, "cumul_plan": 14.3, "cumul_actual": 12.3}, {"year": 2026, "month": 10, "plan": 0.4, "actual": 0.0, "cumul_plan": 14.7, "cumul_actual": 12.3}, {"year": 2026, "month": 11, "plan": 0.5, "actual": 0.0, "cumul_plan": 15.2, "cumul_actual": 12.3}, {"year": 2026, "month": 12, "plan": 0.5, "actual": 0.0, "cumul_plan": 15.7, "cumul_actual": 12.3}, {"year": 2027, "month": 1, "plan": 0.4, "actual": 0.0, "cumul_plan": 16.1, "cumul_actual": 12.3}, {"year": 2027, "month": 2, "plan": 0.2, "actual": 0.0, "cumul_plan": 16.3, "cumul_actual": 12.3}, {"year": 2027, "month": 3, "plan": 0.9, "actual": 0.0, "cumul_plan": 17.2, "cumul_actual": 12.3}, {"year": 2027, "month": 4, "plan": 0.8, "actual": 0.0, "cumul_plan": 18.0, "cumul_actual": 12.3}, {"year": 2027, "month": 5, "plan": 1.2, "actual": 0.0, "cumul_plan": 19.2, "cumul_actual": 12.3}, {"year": 2027, "month": 6, "plan": 1.2, "actual": 0.0, "cumul_plan": 20.4, "cumul_actual": 12.3}, {"year": 2027, "month": 7, "plan": 1.2, "actual": 0.0, "cumul_plan": 21.6, "cumul_actual": 12.3}, {"year": 2027, "month": 8, "plan": 1.2, "actual": 0.0, "cumul_plan": 22.8, "cumul_actual": 12.3}, {"year": 2027, "month": 9, "plan": 1.2, "actual": 0.0, "cumul_plan": 24.0, "cumul_actual": 12.3}, {"year": 2027, "month": 10, "plan": 1.3, "actual": 0.0, "cumul_plan": 25.3, "cumul_actual": 12.3}, {"year": 2027, "month": 11, "plan": 1.1, "actual": 0.0, "cumul_plan": 26.4, "cumul_actual": 12.3}, {"year": 2027, "month": 12, "plan": 1.2, "actual": 0.0, "cumul_plan": 27.6, "cumul_actual": 12.3}, {"year": 2028, "month": 1, "plan": 3.0, "actual": 0.0, "cumul_plan": 30.6, "cumul_actual": 12.3}, {"year": 2028, "month": 2, "plan": 2.2, "actual": 0.0, "cumul_plan": 32.8, "cumul_actual": 12.3}, {"year": 2028, "month": 3, "plan": 2.2, "actual": 0.0, "cumul_plan": 35.0, "cumul_actual": 12.3}, {"year": 2028, "month": 4, "plan": 2.5, "actual": 0.0, "cumul_plan": 37.5, "cumul_actual": 12.3}, {"year": 2028, "month": 5, "plan": 2.6, "actual": 0.0, "cumul_plan": 40.1, "cumul_actual": 12.3}, {"year": 2028, "month": 6, "plan": 2.7, "actual": 0.0, "cumul_plan": 42.8, "cumul_actual": 12.3}, {"year": 2028, "month": 7, "plan": 2.2, "actual": 0.0, "cumul_plan": 45.0, "cumul_actual": 12.3}, {"year": 2028, "month": 8, "plan": 2.2, "actual": 0.0, "cumul_plan": 47.2, "cumul_actual": 12.3}, {"year": 2028, "month": 9, "plan": 4.4, "actual": 0.0, "cumul_plan": 51.6, "cumul_actual": 12.3}, {"year": 2028, "month": 10, "plan": 5.4, "actual": 0.0, "cumul_plan": 57.0, "cumul_actual": 12.3}, {"year": 2028, "month": 11, "plan": 4.8, "actual": 0.0, "cumul_plan": 61.8, "cumul_actual": 12.3}, {"year": 2028, "month": 12, "plan": 5.6, "actual": 0.0, "cumul_plan": 67.4, "cumul_actual": 12.3}, {"year": 2029, "month": 1, "plan": 4.8, "actual": 0.0, "cumul_plan": 72.2, "cumul_actual": 12.3}, {"year": 2029, "month": 2, "plan": 1.7, "actual": 0.0, "cumul_plan": 73.9, "cumul_actual": 12.3}, {"year": 2029, "month": 3, "plan": 2.3, "actual": 0.0, "cumul_plan": 76.2, "cumul_actual": 12.3}, {"year": 2029, "month": 4, "plan": 4.7, "actual": 0.0, "cumul_plan": 80.9, "cumul_actual": 12.3}, {"year": 2029, "month": 5, "plan": 4.6, "actual": 0.0, "cumul_plan": 85.5, "cumul_actual": 12.3}, {"year": 2029, "month": 6, "plan": 0.1, "actual": 0.0, "cumul_plan": 85.6, "cumul_actual": 12.3}, {"year": 2029, "month": 7, "plan": 0.1, "actual": 0.0, "cumul_plan": 85.7, "cumul_actual": 12.3}, {"year": 2029, "month": 8, "plan": 0.2, "actual": 0.0, "cumul_plan": 85.9, "cumul_actual": 12.3}, {"year": 2029, "month": 9, "plan": 1.0, "actual": 0.0, "cumul_plan": 86.9, "cumul_actual": 12.3}, {"year": 2029, "month": 10, "plan": 0.1, "actual": 0.0, "cumul_plan": 87.0, "cumul_actual": 12.3}, {"year": 2029, "month": 11, "plan": 2.2, "actual": 0.0, "cumul_plan": 89.2, "cumul_actual": 12.3}, {"year": 2029, "month": 12, "plan": 2.2, "actual": 0.0, "cumul_plan": 91.4, "cumul_actual": 12.3}, {"year": 2030, "month": 1, "plan": 2.2, "actual": 0.0, "cumul_plan": 93.6, "cumul_actual": 12.3}, {"year": 2030, "month": 2, "plan": 3.2, "actual": 0.0, "cumul_plan": 96.8, "cumul_actual": 12.3}, {"year": 2030, "month": 3, "plan": 0.9, "actual": 0.0, "cumul_plan": 97.7, "cumul_actual": 12.3}, {"year": 2030, "month": 4, "plan": 1.2, "actual": 0.0, "cumul_plan": 98.9, "cumul_actual": 12.3}, {"year": 2030, "month": 5, "plan": 0.2, "actual": 0.0, "cumul_plan": 99.1, "cumul_actual": 12.3}, {"year": 2030, "month": 6, "plan": 0.2, "actual": 0.0, "cumul_plan": 99.3, "cumul_actual": 12.3}, {"year": 2030, "month": 7, "plan": 0.3, "actual": 0.0, "cumul_plan": 99.6, "cumul_actual": 12.3}, {"year": 2030, "month": 8, "plan": 0.4, "actual": 0.0, "cumul_plan": 100.0, "cumul_actual": 12.3}, {"year": 2030, "month": 9, "plan": 0.0, "actual": 0.0, "cumul_plan": 100.0, "cumul_actual": 12.3}, {"year": 2030, "month": 10, "plan": 0.0, "actual": 0.0, "cumul_plan": 100.0, "cumul_actual": 12.3}, {"year": 2030, "month": 11, "plan": 0.0, "actual": 0.0, "cumul_plan": 100.0, "cumul_actual": 12.3}, {"year": 2030, "month": 12, "plan": 0.0, "actual": 0.0, "cumul_plan": 100.0, "cumul_actual": 12.3}, {"year": 2031, "month": 1, "plan": 0.0, "actual": 0.0, "cumul_plan": 100.0, "cumul_actual": 12.3}, {"year": 2031, "month": 2, "plan": 0.0, "actual": 0.0, "cumul_plan": 100.0, "cumul_actual": 12.3}, {"year": 2031, "month": 3, "plan": 0.0, "actual": 0.0, "cumul_plan": 100.0, "cumul_actual": 12.3}];
+
+// ══ 설정 ══════════════════════════════════════════════════════
+let API = localStorage.getItem('ara_api') || '';
+const PM_PW = 'ara2025!';
+let isPM = false, pmPw = '';
+
+if (!API) {
+  setTimeout(() => {
+    const u = prompt('🔧 초기 설정\nGoogle Apps Script 배포 URL을 입력하세요.\n(취소 = 로컬 모드)');
+    if (u && u.startsWith('http')) { API = u.trim(); localStorage.setItem('ara_api', API); forceReload(); }
+    else sync('idle', '로컬 모드');
+  }, 600);
+}
+
+// ══ 날짜 유틸 ══════════════════════════════════════════════════
+const TODAY = new Date();
+document.getElementById('today-display').textContent =
+  TODAY.getFullYear() + '.' + String(TODAY.getMonth()+1).padStart(2,'0') + '.' + String(TODAY.getDate()).padStart(2,'0');
+
+function parseDate(s) {
+  if (!s || !s.startsWith('20')) return null;
+  const p = s.split('.');
+  if (p.length < 3) return null;
+  return new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+}
+
+function daysUntil(s) {
+  const d = parseDate(s);
+  if (!d) return null;
+  return Math.ceil((d - TODAY) / 86400000);
+}
+
+function warnClass(days) {
+  if (days === null) return '';
+  if (days < 0)  return 'warn-over';
+  if (days <= 5)  return 'warn-5';
+  if (days <= 10) return 'warn-10';
+  if (days <= 15) return 'warn-15';
+  return '';
+}
+function warnBadge(days) {
+  if (days === null) return '';
+  if (days < 0)  return `<span class="warn-badge wb-over">D+${Math.abs(days)} 초과</span>`;
+  if (days <= 5)  return `<span class="warn-badge wb-5">D-${days}</span>`;
+  if (days <= 10) return `<span class="warn-badge wb-10">D-${days}</span>`;
+  if (days <= 15) return `<span class="warn-badge wb-15">D-${days}</span>`;
+  return '';
+}
+
+// ══ PM ════════════════════════════════════════════════════════
+function toggleLogin(){ if(isPM){logoutPm();}else{document.getElementById('login-modal').style.display='flex';setTimeout(()=>document.getElementById('pw-in').focus(),80);} }
+function doLogin(){
+  if(document.getElementById('pw-in').value===PM_PW){
+    isPM=true; pmPw=PM_PW;
+    document.getElementById('login-modal').style.display='none';
+    document.getElementById('pw-in').value='';
+    document.getElementById('pw-err').style.display='none';
+    document.getElementById('pm-btn').textContent='✅ PM 모드';
+    document.getElementById('pm-btn').classList.add('on');
+    setPmUI(true); renderAll();
+  } else { document.getElementById('pw-err').style.display='block'; }
+}
+function logoutPm(){
+  isPM=false; pmPw='';
+  document.getElementById('pm-btn').textContent='PM 로그인';
+  document.getElementById('pm-btn').classList.remove('on');
+  setPmUI(false); renderAll();
+}
+function setPmUI(on){
+  ['gantt-pm-hint','graph-hint'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=on?'inline':'none';});
+  document.getElementById('gantt-save').style.display=on?'block':'none';
+  ['ddss-pm-btns','iss-pm-btns','eq-pm-btns'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=on?'flex':'none';});
+  document.getElementById('monthly-edit-wrap').style.display=on?'block':'none';
+}
+
+// ══ 탭 ════════════════════════════════════════════════════════
+let gBuilt=false, cBuilt=false;
+function go(i,btn){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('sec'+i).classList.add('on'); btn.classList.add('on');
+  if(i===1&&!gBuilt){buildGantt();gBuilt=true;}
+  if(i===2&&!cBuilt){buildCharts();cBuilt=true;}
+}
+
+function switchVTab(tab, btn){
+  document.querySelectorAll('#vtab-vpis,#vtab-ddss').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('vpis-view').style.display=tab==='vpis'?'':'none';
+  document.getElementById('ddss-view').style.display=tab==='ddss'?'':'none';
+}
+
+// ══ 스토리지 ══════════════════════════════════════════════════
+const SK={prog:'p_prog2',gAct:'p_gact2',gPln:'p_gpln2',monthly:'p_monthly2',eq:'p_eq2',ddss:'p_ddss2',iss:'p_iss2',ms:'p_ms2',vpis:'p_vpis2'};
+function ll(k,d){try{const s=localStorage.getItem(k);return s?JSON.parse(s):d;}catch(e){return d;}}
+function ls(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+// ══ 상태 메타 ═════════════════════════════════════════════════
+const SM={'미착수':{bg:'#f1f5f9',tc:'#475569',dot:'#94a3b8'},'진행중':{bg:'#dbeafe',tc:'#1e40af',dot:'#2563eb'},'계획수립':{bg:'#e0f2fe',tc:'#075985',dot:'#0ea5e9'},'제출완료':{bg:'#d1fae5',tc:'#065f46',dot:'#059669'},'승인완료':{bg:'#d1fae5',tc:'#065f46',dot:'#059669'},'완료':{bg:'#d1fae5',tc:'#065f46',dot:'#059669'},'반려/재제출':{bg:'#fee2e2',tc:'#991b1b',dot:'#dc2626'},'미조치':{bg:'#fee2e2',tc:'#991b1b',dot:'#dc2626'},'조치중':{bg:'#fef3c7',tc:'#92400e',dot:'#d97706'},'조치완료':{bg:'#d1fae5',tc:'#065f46',dot:'#059669'},'모니터링':{bg:'#ede9fe',tc:'#4c1d95',dot:'#7c3aed'},'정상':{bg:'#d1fae5',tc:'#065f46',dot:'#059669'}};
+const LM={'긴급':{bg:'#fee2e2',tc:'#991b1b',border:'#dc2626'},'주의':{bg:'#fef3c7',tc:'#92400e',border:'#d97706'},'정상':{bg:'#d1fae5',tc:'#065f46',border:'#059669'}};
+function bdg(s){const m=SM[s]||SM['미착수'];return `<span class="badge" style="background:${m.bg};color:${m.tc}"><span class="bd" style="background:${m.dot}"></span>${s}</span>`;}
+
+// ══ Sheets API ════════════════════════════════════════════════
+function sync(st,msg){
+  const c={ok:'#059669',loading:'#d97706',error:'#dc2626',idle:'#94a3b8'};
+  document.getElementById('sdot').style.background=c[st]||c.idle;
+  document.getElementById('stxt').textContent=msg;
+}
+async function loadSheets(){
+  if(!API){sync('idle','로컬 모드');return;}
+  sync('loading','로딩 중...');
+  try{
+    const r=await fetch(API+'?action=read',{redirect:'follow',mode:'cors'});
+    const d=await r.json();
+    if(d.error) throw new Error(d.error);
+    const map=[
+      ['공정률',SK.prog],['간트실적',SK.gAct],['간트계획',SK.gPln],
+      ['월별공정율',SK.monthly],['EQ시험항목',SK.eq],
+      ['문서제출',SK.ddss],['이슈관리',SK.iss],['마일스톤',SK.ms],['VPIS문서',SK.vpis],
+    ];
+    map.forEach(([sn,sk])=>{if(d[sn]&&d[sn].length)ls(sk,d[sn]);});
+    sync('ok','동기화 완료 ✓');
+    renderAll();
+    if(gBuilt)buildGantt();
+    if(cBuilt){cBuilt=false;buildCharts();}
+  }catch(e){sync('error','연결 실패');console.error(e);}
+}
+async function post(action,data){
+  if(!API)return false;
+  try{
+    const r=await fetch(API,{method:'POST',redirect:'follow',mode:'cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,data,password:pmPw})});
+    const j=await r.json();
+    if(j.error){alert('저장 실패: '+j.error);return false;}
+    sync('ok','저장 완료 ✓');return true;
+  }catch(e){sync('error','저장 실패');return false;}
+}
+async function forceReload(){
+  const b=document.getElementById('rbtn');
+  b.textContent='⏳';b.disabled=true;
+  Object.values(SK).forEach(k=>localStorage.removeItem(k));
+  await loadSheets();
+  b.textContent='🔄';b.disabled=false;
+}
+
+// ══ 기본 데이터 ═══════════════════════════════════════════════
+const PROG_DEF=[
+  {공정명:'Vendor Print',가중치:20,계획율:15.0,실적율:12.3,상태:'진행중',비고:''},
+  {공정명:'Sub-order Placement',가중치:10,계획율:10.0,실적율:4.3,상태:'진행중',비고:'자재 발주 진행중'},
+  {공정명:'Material Receiving',가중치:10,계획율:0.0,실적율:0.0,상태:'미착수',비고:''},
+  {공정명:'Fabrication',가중치:40,계획율:0.0,실적율:0.0,상태:'미착수',비고:''},
+  {공정명:'Inspection & Delivery',가중치:20,계획율:0.0,실적율:0.0,상태:'미착수',비고:''},
+  {공정명:'Installation & Commissioning',가중치:0,계획율:0.0,실적율:0.0,상태:'미착수',비고:''},
+];
+const EQ_DEF=[
+  {코드:'D-1',항목명:'절연내력 시험',분류:'설계시험',상태:'미착수',담당:'',비고:''},
+  {코드:'D-2',항목명:'정격 연속전류 시험',분류:'설계시험',상태:'미착수',담당:'',비고:''},
+  {코드:'D-3',항목명:'단시간 전류 내력 시험',분류:'설계시험',상태:'미착수',담당:'',비고:''},
+  {코드:'D-4',항목명:'순시 전류 시험',분류:'설계시험',상태:'미착수',담당:'',비고:''},
+  {코드:'D-5',항목명:'기계적 내구성 시험',분류:'설계시험',상태:'미착수',담당:'',비고:''},
+  {코드:'D-6',항목명:'절연재 난연·내균열 시험',분류:'설계시험',상태:'미착수',담당:'',비고:''},
+  {코드:'D-7',항목명:'적용절연재 난연 시험',분류:'설계시험',상태:'미착수',담당:'',비고:''},
+  {코드:'D-8',항목명:'도장 자격 시험',분류:'설계시험',상태:'미착수',담당:'',비고:''},
+  {코드:'D-9',항목명:'계기용 변압기 시험',분류:'설계시험',상태:'미착수',담당:'',비고:''},
+  {코드:'D-10',항목명:'내진 시험 (Class 1E)',분류:'설계시험',상태:'미착수',담당:'',비고:'⚠'},
+  {코드:'P-1',항목명:'상용주파 내전압 시험',분류:'생산시험',상태:'미착수',담당:'',비고:''},
+  {코드:'P-2',항목명:'기계적 동작 시험',분류:'생산시험',상태:'미착수',담당:'',비고:''},
+  {코드:'P-3',항목명:'계기용변압기 케이스 접지시험',분류:'생산시험',상태:'미착수',담당:'',비고:''},
+  {코드:'P-4',항목명:'전기동작·제어배선 시험',분류:'생산시험',상태:'미착수',담당:'',비고:''},
+  {코드:'P-5',항목명:'계기용 변압기 시험 (D-9외)',분류:'생산시험',상태:'미착수',담당:'',비고:''},
+  {코드:'EQ-1',항목명:'내진해석 (Cat.II)',분류:'EQ기기검증',상태:'미착수',담당:'',비고:'6개월'},
+  {코드:'EQ-2',항목명:'내진시험 Safety Class Q',분류:'EQ기기검증',상태:'미착수',담당:'',비고:''},
+  {코드:'EQ-3',항목명:'내진시험 Safety Class A',분류:'EQ기기검증',상태:'미착수',담당:'',비고:''},
+  {코드:'EQ-4',항목명:'BSLS 저전자파시험',분류:'EQ기기검증',상태:'미착수',담당:'',비고:'12주'},
+  {코드:'EQ-5',항목명:'열노화 / 방사선노화',분류:'EQ기기검증',상태:'미착수',담당:'',비고:''},
+  {코드:'EQ-6',항목명:'진동노화 / DBE 시험',분류:'EQ기기검증',상태:'미착수',담당:'',비고:''},
+  {코드:'EQ-7',항목명:'Post-DBE 시험',분류:'EQ기기검증',상태:'미착수',담당:'',비고:''},
+  {코드:'EQ-8',항목명:'분해 및 최종 검사',분류:'EQ기기검증',상태:'미착수',담당:'',비고:''},
+  {코드:'E-1',항목명:'전자기 적합성 시험 (EMC)',분류:'EMC시험',상태:'미착수',담당:'',비고:'RG 1.180'},
+  {코드:'E-2',항목명:'서지 내력 시험 (SWC)',분류:'EMC시험',상태:'미착수',담당:'',비고:''},
+  {코드:'E-3',항목명:'방사 EMI/RFI 내력 시험',분류:'EMC시험',상태:'미착수',담당:'',비고:''},
+  {코드:'E-4',항목명:'정전기 방전 시험 (ESD)',분류:'EMC시험',상태:'미착수',담당:'',비고:''},
+];
+const DDSS_DEF=[
+  {코드:'QM-A',문서명:'Quality Assurance Manual',기기:'3종','R/I':'R',예정일:'2025.10.15',상태:'진행중',비고:''},
+  {코드:'QL-A',문서명:"Supplier's Quality Plan",기기:'3종','R/I':'R',예정일:'2025.10.15',상태:'진행중',비고:''},
+  {코드:'EP-A',문서명:'Dynamic Qualification Plan ⚠',기기:'4.16kV','R/I':'R',예정일:'2025.12.20',상태:'미착수',비고:'긴급'},
+  {코드:'TP-A',문서명:'Design Test Procedure (4.16kV)',기기:'4.16kV','R/I':'R',예정일:'2026.04.20',상태:'미착수',비고:''},
+  {코드:'ER-A',문서명:'EQ Report + Raw Data ⚠',기기:'4.16kV','R/I':'R',예정일:'2027.07.20',상태:'미착수',비고:'제작착수 조건'},
+];
+const ISS_DEF=[
+  {긴급도:'긴급',분류:'조달',이슈제목:'ABB 보호계전기 Q-CLASS 조달 지연',상세내용:'NLPA 체결 지연',조치계획:'Deesys 대안 검토',담당자:'설계팀',목표기한:'2025.12.31',상태:'조치중'},
+  {긴급도:'긴급',분류:'EQ',이슈제목:'EQ 시험기관 미선정',상세내용:'EP-A 제출 임박',조치계획:'기관 후보 목록 작성',담당자:'기술팀',목표기한:'2025.12.20',상태:'미조치'},
+  {긴급도:'주의',분류:'설계',이슈제목:'외함 높이 재검토',상세내용:'규격 상이',조치계획:'KEPCO E&C 협의',담당자:'설계팀',목표기한:'2026.01.31',상태:'조치중'},
+];
+const MS_DEF=[
+  {날짜:'2025.09.17',마일스톤:'계약 체결',완료여부:'완료',비고:''},
+  {날짜:'2025.10.16',마일스톤:'사업 착수 (킥오프)',완료여부:'완료',비고:''},
+  {날짜:'2025.12.20',마일스톤:'EQ 계획서 (EP-A) 제출',완료여부:'미완료',비고:'⚠ 긴급'},
+  {날짜:'2027.07.20',마일스톤:'EQ 보고서 (ER-A) 제출',완료여부:'미완료',비고:''},
+  {날짜:'2029.04.13',마일스톤:'최종 납품 완료',완료여부:'미완료',비고:''},
+];
+
+// ══ 01. 개요 ══════════════════════════════════════════════════
+function renderOverview(){
+  const prog=ll(SK.prog,PROG_DEF),iss=ll(SK.iss,ISS_DEF),ddss=ll(SK.ddss,DDSS_DEF),vpis=ll(SK.vpis,[]);
+  const tP=prog.reduce((s,p)=>s+p.가중치*(Number(p.계획율)||0)/100,0).toFixed(1);
+  const tA=prog.reduce((s,p)=>s+p.가중치*(Number(p.실적율)||0)/100,0).toFixed(1);
+  const uC=iss.filter(i=>i.긴급도==='긴급').length,wC=iss.filter(i=>i.긴급도==='주의').length;
+  
+  // VPIS 경고 건수
+  const vWarn5=vpis.filter(d=>d.status!=='제출완료'&&d.status!=='승인완료'&&daysUntil(d.sch_date)!==null&&daysUntil(d.sch_date)<=5&&daysUntil(d.sch_date)>=0).length;
+  const vWarn15=vpis.filter(d=>d.status!=='제출완료'&&d.status!=='승인완료'&&daysUntil(d.sch_date)!==null&&daysUntil(d.sch_date)<=15&&daysUntil(d.sch_date)>=0).length;
+  
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="kpi" style="border-top-color:#2563eb"><div class="kl">계약 체결</div><div class="kv" style="font-size:12px">2025.09.17</div><div class="ks">R092500097</div></div>
+    <div class="kpi" style="border-top-color:#059669"><div class="kl">사업 착수</div><div class="kv" style="font-size:12px">2025.10.16</div><div class="ks">킥오프 완료</div></div>
+    <div class="kpi" style="border-top-color:#d97706"><div class="kl">계획 납기</div><div class="kv" style="font-size:12px">~2029.04</div><div class="ks">최종 2029.12</div></div>
+    <div class="kpi" style="border-top-color:#2563eb"><div class="kl">누계 계획율</div><div class="kv">${tP}%</div><div class="kb"><div class="kbf" style="width:${Math.min(tP,100)}%;background:#2563eb"></div></div></div>
+    <div class="kpi" style="border-top-color:#059669"><div class="kl">누계 실적율</div><div class="kv">${tA}%</div><div class="kb"><div class="kbf" style="width:${Math.min(tA,100)}%;background:#059669"></div></div></div>
+    <div class="kpi" style="border-top-color:#dc2626"><div class="kl">이슈 / VPIS 경고</div><div class="kv">${iss.length}건</div><div class="ks">D-15 ${vWarn15}건 · D-5 ${vWarn5}건</div></div>`;
+
+  // 공정률 테이블
+  const pRows=isPM
+    ? prog.map((p,i)=>`<tr><td>${p.공정명}</td><td style="text-align:center">${p.가중치}%</td>
+        <td style="text-align:center"><input class="ed" type="number" min="0" max="100" step="0.1" value="${Number(p.계획율)||0}" onchange="upProg(${i},'계획율',this.value)"></td>
+        <td style="text-align:center"><input class="ed" type="number" min="0" max="100" step="0.1" value="${Number(p.실적율)||0}" onchange="upProg(${i},'실적율',this.value)"></td>
+        <td><select onchange="upProg(${i},'상태',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:4px">${['미착수','진행중','정상','완료'].map(s=>`<option${p.상태===s?' selected':''}>${s}</option>`).join('')}</select></td>
+        <td><input class="ed ed-w" value="${p.비고||''}" onchange="upProg(${i},'비고',this.value)"></td></tr>`).join('')+
+      `<tr style="font-weight:700;background:#f8fafc"><td>합계</td><td style="text-align:center">100%</td><td style="text-align:center">${tP}%</td><td style="text-align:center">${tA}%</td><td colspan="2"><button class="btn-pri" style="font-size:10px;padding:3px 9px" onclick="saveProgress()">💾 저장</button></td></tr>`
+    : prog.map(p=>`<tr><td>${p.공정명}</td><td style="text-align:center">${p.가중치}%</td><td style="text-align:center">${Number(p.계획율)||0}%</td><td style="text-align:center">${Number(p.실적율)||0}%</td><td>${bdg(p.상태)}</td><td style="font-size:10px;color:var(--text2)">${p.비고||'-'}</td></tr>`).join('')+
+      `<tr style="font-weight:700;background:#f8fafc"><td>합계</td><td style="text-align:center">100%</td><td style="text-align:center">${tP}%</td><td style="text-align:center">${tA}%</td><td colspan="2"></td></tr>`;
+
+  document.getElementById('prog-tbl').innerHTML=`<table class="tbl"><thead><tr><th>공정명</th><th>가중치</th><th>계획율%</th><th>실적율%</th><th>상태</th><th>비고</th></tr></thead><tbody>${pRows}</tbody></table>`;
+
+  const lc={'긴급':['#fef2f2','#dc2626'],'주의':['#fffbeb','#d97706'],'정상':['#f0fdf4','#059669']};
+  const li={'긴급':'🔴','주의':'🟡','정상':'🟢'};
+  document.getElementById('iss-summary').innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+
+    ll(SK.iss,ISS_DEF).slice(0,5).map(d=>{const[bg,bc]=lc[d.긴급도]||lc['정상'];return`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px;background:${bg};border-radius:7px;border-left:3px solid ${bc}"><span style="font-size:10px;font-weight:700;color:${bc};white-space:nowrap">${li[d.긴급도]} ${d.긴급도}</span><div><div style="font-size:11px;font-weight:500;color:var(--text)">${d.이슈제목}</div><div style="font-size:10px;color:var(--text2)">${d.조치계획}</div></div></div>`;}).join('')+'</div>';
+
+  document.getElementById('dev-cards').innerHTML=`
+    <div class="card" style="text-align:center"><div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:6px">22.9kV SWGR</div><div style="font-size:22px;font-weight:800;color:#2563eb">1식</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:6px">4.16kV SWGR (1E)</div><div style="font-size:22px;font-weight:800;color:#7c3aed">1식</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:6px">Fault Recorder</div><div style="font-size:22px;font-weight:800;color:#059669">1식</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:6px">VPIS D-5 경고</div><div style="font-size:22px;font-weight:800;color:#dc2626">${vWarn5}건</div></div>`;
+}
+function upProg(i,k,v){const d=ll(SK.prog,PROG_DEF);d[i][k]=(k==='계획율'||k==='실적율')?parseFloat(v)||0:v;ls(SK.prog,d);}
+async function saveProgress(){await post('saveProgress',ll(SK.prog,PROG_DEF).map(p=>({공정명:p.공정명,가중치:p.가중치,계획율:p.계획율,실적율:p.실적율,상태:p.상태,비고:p.비고||''})));renderOverview();}
+
+// ══ 02. 간트 ══════════════════════════════════════════════════
+// 2025.09 ~ 2031.03 (67개월)
+const MONTHS=[];
+let _y=2025,_m=9;
+for(let i=0;i<67;i++){MONTHS.push({y:_y,m:_m});_m++;if(_m>12){_m=1;_y++;}}
+const YRS=[
+  {y:2025,n:4,bg:'#dbeafe',tc:'#1e40af'},{y:2026,n:12,bg:'#fef3c7',tc:'#92400e'},
+  {y:2027,n:12,bg:'#d1fae5',tc:'#065f46'},{y:2028,n:12,bg:'#fce7f3',tc:'#9d174d'},
+  {y:2029,n:12,bg:'#ede9fe',tc:'#4c1d95'},{y:2030,n:12,bg:'#f1f5f9',tc:'#475569'},
+  {y:2031,n:3, bg:'#f8fafc',tc:'#94a3b8'},
+];
+
+function pI(y,m){return MONTHS.findIndex(mo=>mo.y===y&&mo.m===m);}
+
+function getActSet(){
+  const acts=ll(SK.gAct,[]);const s=new Set();
+  acts.forEach(g=>s.add(g.공정명+'_'+pI(Number(g.연도||g.y),Number(g.월||g.m))));
+  return s;
+}
+function toggleAct(label,i){
+  if(!isPM)return;
+  const acts=ll(SK.gAct,[]);const mo=MONTHS[i];
+  const idx=acts.findIndex(g=>g.공정명===label&&Number(g.연도||g.y)===mo.y&&Number(g.월||g.m)===mo.m);
+  if(idx>=0)acts.splice(idx,1);else acts.push({공정명:label,연도:mo.y,월:mo.m});
+  ls(SK.gAct,acts);buildGantt();
+}
+
+function buildGantt(){
+  const rows=GANTT_ROWS_DEFAULT;
+  const actSet=getActSet();
+  const tbl=document.getElementById('gtbl');
+  let h='<thead><tr><th style="min-width:170px;text-align:left;padding:4px 5px">공정명</th><th style="min-width:32px">가중치</th>';
+  YRS.forEach(yr=>h+=`<th colspan="${yr.n}" style="background:${yr.bg};color:${yr.tc};font-weight:700;font-size:9px;text-align:center;padding:2px 0">${yr.y}</th>`);
+  h+='</tr><tr><th></th><th></th>';
+  MONTHS.forEach(mo=>h+=`<th style="width:15px;text-align:center;font-size:8px;color:var(--text3);padding:2px 0;${mo.m===1?'border-left:1.5px solid #cbd5e1':''}">${mo.m}</th>`);
+  h+='</tr></thead><tbody>';
+  rows.forEach(r=>{
+    h+='<tr>';
+    if(r.g){
+      h+=`<td class="gl grp">${r.label}</td><td class="gw grp">${r.w}</td>`;
+      MONTHS.forEach(()=>h+='<td class="gc cgrp"></td>');
+    } else {
+      h+=`<td class="gl sub">${r.label}</td><td class="gw">${r.w||''}</td>`;
+      MONTHS.forEach((mo,i)=>{
+        const key=r.label+'_'+i;
+        const inA=actSet.has(key),inP=r.plan&&r.plan.includes(i);
+        const cl=inA?'ca':inP?`c${r.cls||'p'}`:'';
+        const bl=mo.m===1?'border-left:1.5px solid #e2e8f0;':'';
+        const ck=isPM&&inP?`onclick="toggleAct('${r.label.replace(/'/g,"\'")}',${i})" style="${bl}cursor:pointer"`:`style="${bl}"`;
+        h+=`<td class="gc ${cl}" ${ck}></td>`;
+      });
+    }
+    h+='</tr>';
+  });
+  tbl.innerHTML=h+'</tbody>';
+}
+async function saveGanttAct(){
+  await post('saveGanttAct',ll(SK.gAct,[]).map(g=>({공정명:g.공정명,연도:g.연도||g.y,월:g.월||g.m})));
+  alert('✅ 간트 실적 저장 완료');
+}
+
+// ══ 03. 차트 ══════════════════════════════════════════════════
+let mChart=null,cChart=null;
+function buildCharts(){
+  const md=ll(SK.monthly,MONTHLY_DEFAULT);
+  const labels=md.slice(0,24).map(m=>m.year+'.'+String(m.month).padStart(2,'0'));
+  const plan=md.slice(0,24).map(m=>Number(m.plan)||0);
+  const act=md.slice(0,24).map(m=>Number(m.actual)||0);
+  const cp=md.slice(0,24).map(m=>Number(m.cumul_plan)||0);
+  const ca=md.slice(0,24).map(m=>Number(m.cumul_actual)||0);
+  if(mChart)mChart.destroy();
+  if(cChart)cChart.destroy();
+  mChart=new Chart(document.getElementById('ch-monthly'),{type:'bar',data:{labels,datasets:[{label:'계획',data:plan,backgroundColor:'#2563eb44',borderColor:'#2563eb',borderWidth:1},{label:'실적',data:act,backgroundColor:'#05966999',borderColor:'#059669',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:8}}},y:{ticks:{font:{size:8}}}}}});
+  cChart=new Chart(document.getElementById('ch-cumul'),{type:'line',data:{labels,datasets:[{label:'누계 계획',data:cp,borderColor:'#2563eb',backgroundColor:'#2563eb11',tension:.3,fill:true,borderWidth:2,pointRadius:2},{label:'누계 실적',data:ca,borderColor:'#059669',backgroundColor:'#05966911',tension:.3,fill:true,borderWidth:2,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:9},boxWidth:9}}},scales:{x:{ticks:{font:{size:8}}},y:{ticks:{font:{size:8}}}}}});
+  if(!document.getElementById('ch-weight')._ci){
+    document.getElementById('ch-weight')._ci=new Chart(document.getElementById('ch-weight'),{type:'doughnut',data:{labels:['VP 20%','SO 10%','MR 10%','FAB 40%','I&D 20%'],datasets:[{data:[20,10,10,40,20],backgroundColor:['#2563eb','#059669','#d97706','#7c3aed','#db2777'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  }
+  const ms=ll(SK.ms,MS_DEF);
+  document.getElementById('milestones').innerHTML=ms.map(m=>`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid #f1f5f9"><div style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:${m.완료여부==='완료'?'#059669':m.비고&&m.비고.includes('⚠')?'#dc2626':'#cbd5e1'}"></div><div style="font-size:10px;color:#64748b;min-width:70px;flex-shrink:0">${m.날짜}</div><div style="font-size:11px;font-weight:${m.비고&&m.비고.includes('⚠')?600:400};color:${m.비고&&m.비고.includes('⚠')?'#dc2626':m.완료여부==='완료'?'#059669':'var(--text)'}">${m.마일스톤}${m.비고&&m.비고.includes('⚠')?' ⚠':''}</div><div style="margin-left:auto;font-size:9px;padding:1px 5px;border-radius:99px;background:${m.완료여부==='완료'?'#d1fae5':'#f1f5f9'};color:${m.완료여부==='완료'?'#065f46':'#94a3b8'}">${m.완료여부}</div></div>`).join('');
+  if(isPM) renderMonthlyEdit();
+}
+function renderMonthlyEdit(){
+  const md=ll(SK.monthly,MONTHLY_DEFAULT);
+  document.getElementById('monthly-tbl').innerHTML=`<thead><tr><th>연월</th><th>계획율(%)</th><th>실적율(%)</th></tr></thead><tbody>${md.map((m,i)=>`<tr><td>${m.year}.${String(m.month).padStart(2,'0')}</td><td style="text-align:center"><input class="ed" type="number" min="0" max="100" step="0.01" value="${Number(m.plan)||0}" onchange="upMonthly(${i},'plan',this.value)"></td><td style="text-align:center"><input class="ed" type="number" min="0" max="100" step="0.01" value="${Number(m.actual)||0}" onchange="upMonthly(${i},'actual',this.value)"></td></tr>`).join('')}</tbody>`;
+}
+function upMonthly(i,k,v){const d=ll(SK.monthly,MONTHLY_DEFAULT);d[i][k]=parseFloat(v)||0;ls(SK.monthly,d);}
+async function saveMonthly(){
+  const d=ll(SK.monthly,MONTHLY_DEFAULT);
+  await post('saveMonthly',d.map(m=>({연월:`${m.year}.${String(m.month).padStart(2,'0')}`,계획율:m.plan,실적율:m.actual})));
+  cBuilt=false;buildCharts();
+}
+
+// ══ 04. EQ ════════════════════════════════════════════════════
+let eqF='전체';
+function renderEq(){
+  const data=ll(SK.eq,EQ_DEF);
+  const cats=['전체','설계시험','생산시험','EQ기기검증','EMC시험'];
+  const cnt=Object.fromEntries(cats.slice(1).map(c=>[c,data.filter(d=>d.분류===c).length]));
+  document.getElementById('eq-filters').innerHTML=cats.map(c=>`<button class="fbtn${eqF===c?' on':''}" onclick="setEqF('${c}')">${c}${c!=='전체'&&cnt[c]?` (${cnt[c]})`:''}</button>`).join('');
+  const rows=eqF==='전체'?data:data.filter(d=>d.분류===eqF);
+  document.getElementById('eq-tbl').innerHTML=`<thead><tr><th>코드</th><th>항목명</th><th>분류</th><th>상태</th><th>담당</th><th>비고</th>${isPM?'<th>변경</th><th>삭제</th>':''}</tr></thead>
+    <tbody>${rows.map((d,ri)=>{const ri2=data.indexOf(d);return`<tr>
+      <td class="tc">${d.코드}</td><td>${d.항목명}</td>
+      <td><span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#f1f5f9;color:#475569">${d.분류}</span></td>
+      <td>${bdg(d.상태)}</td>
+      <td style="font-size:10px;color:var(--text2)">${d.담당||'-'}</td>
+      <td style="font-size:10px;color:var(--text2)">${d.비고||'-'}</td>
+      ${isPM?`<td><select onchange="updEq(${ri2},this.value)" style="font-size:9px;padding:2px 4px;border:1px solid var(--border);border-radius:4px">${['미착수','계획수립','진행중','완료'].map(s=>`<option${d.상태===s?' selected':''}>${s}</option>`).join('')}</select></td><td><button class="btn-del" onclick="delEq(${ri2})">삭제</button></td>`:''}
+    </tr>`;}).join('')}</tbody>`;
+}
+function setEqF(c){eqF=c;renderEq();}
+function updEq(i,v){const d=ll(SK.eq,EQ_DEF);d[i].상태=v;ls(SK.eq,d);renderEq();}
+function delEq(i){if(!confirm('삭제?'))return;const d=ll(SK.eq,EQ_DEF);d.splice(i,1);ls(SK.eq,d);renderEq();}
+function addEqItem(){
+  const d=ll(SK.eq,EQ_DEF);
+  d.push({코드:document.getElementById('eq-code').value,항목명:document.getElementById('eq-name').value,분류:document.getElementById('eq-cat').value,상태:document.getElementById('eq-st').value,담당:document.getElementById('eq-owner').value,비고:''});
+  ls(SK.eq,d);renderEq();toggleP('eq-form');
+  ['eq-code','eq-name','eq-owner'].forEach(id=>document.getElementById(id).value='');
+}
+async function saveEq(){await post('saveEq',ll(SK.eq,EQ_DEF).map(d=>({코드:d.코드,항목명:d.항목명,분류:d.분류,상태:d.상태,담당:d.담당||'',비고:d.비고||''})));}
+
+// ══ 05. VPIS ══════════════════════════════════════════════════
+let vpisF='전체', vpisPage=0;
+const VPIS_PER_PAGE=50;
+
+function renderVpisWarnCards(){
+  const vpis=ll(SK.vpis,[]);
+  const over=vpis.filter(d=>d.status!=='제출완료'&&d.status!=='승인완료'&&daysUntil(d.sch_date)!==null&&daysUntil(d.sch_date)<0).length;
+  const d5=vpis.filter(d=>d.status!=='제출완료'&&d.status!=='승인완료'&&daysUntil(d.sch_date)!==null&&daysUntil(d.sch_date)>=0&&daysUntil(d.sch_date)<=5).length;
+  const d10=vpis.filter(d=>d.status!=='제출완료'&&d.status!=='승인완료'&&daysUntil(d.sch_date)!==null&&daysUntil(d.sch_date)>5&&daysUntil(d.sch_date)<=10).length;
+  const d15=vpis.filter(d=>d.status!=='제출완료'&&d.status!=='승인완료'&&daysUntil(d.sch_date)!==null&&daysUntil(d.sch_date)>10&&daysUntil(d.sch_date)<=15).length;
+  const total=vpis.length;
+  document.getElementById('vpis-warn-cards').innerHTML=`
+    <div class="card" style="text-align:center;border-top:3px solid #dc2626;background:#fff"><div class="kl">기한 초과</div><div style="font-size:22px;font-weight:800;color:#dc2626">${over}건</div><div class="ks">즉시 조치 필요</div></div>
+    <div class="card" style="text-align:center;border-top:3px solid #ef4444;background:#fff5f5"><div class="kl">D-5 이내</div><div style="font-size:22px;font-weight:800;color:#dc2626">${d5}건</div><div class="ks">긴급</div></div>
+    <div class="card" style="text-align:center;border-top:3px solid #f97316;background:#fff7ed"><div class="kl">D-10 이내</div><div style="font-size:22px;font-weight:800;color:#9a3412">${d10}건</div><div class="ks">주의</div></div>
+    <div class="card" style="text-align:center;border-top:3px solid #d97706;background:#fffbeb"><div class="kl">D-15 이내</div><div style="font-size:22px;font-weight:800;color:#92400e">${d15}건</div><div class="ks">확인 필요</div></div>`;
+}
+
+function renderVpis(){
+  const vpis=ll(SK.vpis,[]);
+  const search=(document.getElementById('vpis-search')?.value||'').toLowerCase();
+  const filters=['전체','기한초과','D-5','D-10','D-15','미착수','제출완료'];
+  document.getElementById('vpis-filters').innerHTML=filters.map(f=>`<button class="fbtn${vpisF===f?' on':''}" onclick="setVpisF('${f}')">${f}</button>`).join('');
+
+  let filtered=vpis.filter(d=>{
+    if(search&&!d.doc_no.toLowerCase().includes(search)&&!d.title.toLowerCase().includes(search)) return false;
+    const days=daysUntil(d.sch_date);
+    const done=d.status==='제출완료'||d.status==='승인완료';
+    if(vpisF==='기한초과') return !done&&days!==null&&days<0;
+    if(vpisF==='D-5')   return !done&&days!==null&&days>=0&&days<=5;
+    if(vpisF==='D-10')  return !done&&days!==null&&days>5&&days<=10;
+    if(vpisF==='D-15')  return !done&&days!==null&&days>10&&days<=15;
+    if(vpisF==='미착수') return d.status==='미착수';
+    if(vpisF==='제출완료') return done;
+    return true;
+  });
+
+  const total=filtered.length;
+  const pages=Math.ceil(total/VPIS_PER_PAGE);
+  const paged=filtered.slice(vpisPage*VPIS_PER_PAGE,(vpisPage+1)*VPIS_PER_PAGE);
+
+  document.getElementById('vpis-tbl').innerHTML=`
+    <thead><tr><th>문서번호</th><th>문서명</th><th>R/I</th><th>제출 예정일</th><th>D-day</th><th>상태</th>${isPM?'<th>변경</th>':''}</tr></thead>
+    <tbody>${paged.map((d,ri)=>{
+      const days=daysUntil(d.sch_date);
+      const wc=warnClass(days);
+      const idx=vpis.indexOf(d);
+      const ddayTxt=days===null?'-':days<0?`<span style="color:#dc2626;font-weight:700">D+${Math.abs(days)}</span>`:`<span style="${days<=5?'color:#dc2626':days<=10?'color:#9a3412':days<=15?'color:#92400e':'color:var(--text2)'}">D-${days}</span>`;
+      return`<tr class="${wc}">
+        <td class="tc" style="white-space:nowrap;font-size:10px">${d.doc_no}</td>
+        <td style="font-size:10px;max-width:280px">${d.title}${warnBadge(days)}</td>
+        <td style="text-align:center;font-weight:700;color:${d.ri==='R'?'#2563eb':'#059669'}">${d.ri}</td>
+        <td style="font-size:10px;white-space:nowrap">${d.sch_date}</td>
+        <td style="text-align:center;font-size:10px">${ddayTxt}</td>
+        <td>${bdg(d.status||'미착수')}</td>
+        ${isPM?`<td><select onchange="updVpis(${idx},this.value)" style="font-size:9px;padding:2px 4px;border:1px solid var(--border);border-radius:4px">${['미착수','진행중','제출완료','승인완료','반려/재제출'].map(s=>`<option${(d.status||'미착수')===s?' selected':''}>${s}</option>`).join('')}</select></td>`:''}
+      </tr>`;
+    }).join('')}</tbody>`;
+
+  // 페이지네이션
+  let pg='';
+  if(pages>1){
+    for(let i=0;i<pages;i++){
+      pg+=`<button class="fbtn${vpisPage===i?' on':''}" onclick="setVpisPage(${i})">${i+1}</button>`;
+    }
+  }
+  document.getElementById('vpis-pagination').innerHTML=pg;
+}
+function setVpisF(f){vpisF=f;vpisPage=0;renderVpis();}
+function setVpisPage(p){vpisPage=p;renderVpis();}
+function updVpis(i,v){
+  const d=ll(SK.vpis,[]);
+  if(d[i])d[i].status=v;
+  ls(SK.vpis,d);renderVpis();renderVpisWarnCards();renderOverview();
+  post('saveVpis',d.map(r=>({doc_no:r.doc_no,title:r.title,ri:r.ri,sch_date:r.sch_date,actual_date:r.actual_date||'',remark:r.remark||'',status:r.status||'미착수'})));
+}
+
+// ══ DDSS ══════════════════════════════════════════════════════
+let ddssF='전체';
+function renderDdss(){
+  const data=ll(SK.ddss,DDSS_DEF);
+  const sts=['전체','미착수','진행중','제출완료','승인완료'];
+  const cnt=Object.fromEntries(sts.slice(1).map(s=>[s,data.filter(d=>d.상태===s).length]));
+  document.getElementById('ddss-filters').innerHTML=sts.map(s=>`<button class="fbtn${ddssF===s?' on':''}" onclick="setDdssF('${s}')">${s}${s!=='전체'&&cnt[s]?` (${cnt[s]})`:''}</button>`).join('');
+  const rows=ddssF==='전체'?data:data.filter(d=>d.상태===ddssF);
+  document.getElementById('ddss-tbl').innerHTML=`<thead><tr><th>코드</th><th>문서명</th><th>기기</th><th>R/I</th><th>예정일</th><th>상태</th>${isPM?'<th>변경</th><th>삭제</th>':''}</tr></thead>
+    <tbody>${rows.map((d,ri)=>{const ri2=data.indexOf(d);
+      const days=daysUntil(d.예정일);const wc=warnClass(days);
+      return`<tr class="${wc}">
+        <td class="tc">${d.코드}</td><td>${d.문서명}${warnBadge(days)}</td>
+        <td><span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#f1f5f9;color:#475569">${d.기기}</span></td>
+        <td style="text-align:center;font-weight:700;color:${d['R/I']==='R'?'#2563eb':'#059669'}">${d['R/I']}</td>
+        <td style="font-size:10px;color:var(--text2);white-space:nowrap">${d.예정일}</td>
+        <td>${bdg(d.상태)}</td>
+        ${isPM?`<td><select onchange="updDdss(${ri2},this.value)" style="font-size:9px;padding:2px 4px;border:1px solid var(--border);border-radius:4px">${['미착수','진행중','제출완료','승인완료','반려/재제출'].map(s=>`<option${d.상태===s?' selected':''}>${s}</option>`).join('')}</select></td><td><button class="btn-del" onclick="delDdss(${ri2})">삭제</button></td>`:''}
+      </tr>`;}).join('')}</tbody>`;
+}
+function setDdssF(s){ddssF=s;renderDdss();}
+function updDdss(i,v){const d=ll(SK.ddss,DDSS_DEF);d[i].상태=v;ls(SK.ddss,d);renderDdss();syncDdss();}
+function delDdss(i){if(!confirm('삭제?'))return;const d=ll(SK.ddss,DDSS_DEF);d.splice(i,1);ls(SK.ddss,d);renderDdss();syncDdss();}
+function addDdss(){
+  const d=ll(SK.ddss,DDSS_DEF);
+  d.push({코드:document.getElementById('dc').value,문서명:document.getElementById('dn').value,기기:document.getElementById('deq').value,'R/I':document.getElementById('dri').value,예정일:document.getElementById('ddue').value,상태:document.getElementById('dst').value,비고:''});
+  ls(SK.ddss,d);renderDdss();syncDdss();toggleP('ddss-form');
+  ['dc','dn','ddue'].forEach(id=>document.getElementById(id).value='');
+}
+async function syncDdss(){await post('saveDdss',ll(SK.ddss,DDSS_DEF).map(d=>({코드:d.코드,문서명:d.문서명,기기:d.기기,'R/I':d['R/I'],예정일:d.예정일,상태:d.상태,비고:d.비고||''})));}
+
+// ══ 06. 이슈 ══════════════════════════════════════════════════
+let issF='전체';
+function renderIssues(){
+  const data=ll(SK.iss,ISS_DEF);
+  const lvs=['전체','긴급','주의','정상'];
+  const cnt=Object.fromEntries(lvs.slice(1).map(l=>[l,data.filter(d=>d.긴급도===l).length]));
+  const ic={'긴급':'🔴','주의':'🟡','정상':'🟢'};
+  document.getElementById('iss-filters').innerHTML=lvs.map(l=>`<button class="fbtn${issF===l?' on':''}" onclick="setIssF('${l}')">${l!=='전체'?ic[l]+' ':''}${l}${l!=='전체'&&cnt[l]?` (${cnt[l]})`:''}</button>`).join('');
+  const rows=issF==='전체'?data:data.filter(d=>d.긴급도===issF);
+  document.getElementById('iss-list').innerHTML=rows.map((d,ri)=>{
+    const ri2=data.indexOf(d);const lm=LM[d.긴급도]||LM['정상'];
+    return`<div class="ic" style="border-left-color:${lm.border}">
+      <div class="ic-head">
+        <div><span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:4px;background:${lm.bg};color:${lm.tc};margin-right:5px">${d.긴급도}</span><span style="font-size:10px;color:var(--text3)">${d.분류}</span><div class="ic-title">${d.이슈제목}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          ${bdg(d.상태)}
+          ${isPM?`<select onchange="updIss(${ri2},this.value)" style="font-size:9px;padding:2px 4px;border:1px solid var(--border);border-radius:4px">${['미조치','조치중','조치완료','모니터링'].map(s=>`<option${d.상태===s?' selected':''}>${s}</option>`).join('')}</select><button class="btn-del" onclick="delIss(${ri2})">삭제</button>`:''}
+        </div>
+      </div>
+      <div class="ic-desc">${d.상세내용}</div>
+      <div class="ic-act"><strong style="color:var(--text2)">조치:</strong> ${d.조치계획}</div>
+      <div class="ic-meta"><span>👤 ${d.담당자}</span><span>📅 ${d.목표기한}</span></div>
+    </div>`;
+  }).join('');
+}
+function setIssF(l){issF=l;renderIssues();}
+function updIss(i,v){const d=ll(SK.iss,ISS_DEF);d[i].상태=v;ls(SK.iss,d);renderIssues();syncIss();}
+function delIss(i){if(!confirm('삭제?'))return;const d=ll(SK.iss,ISS_DEF);d.splice(i,1);ls(SK.iss,d);renderIssues();syncIss();}
+function addIssue(){
+  const d=ll(SK.iss,ISS_DEF);
+  d.push({긴급도:document.getElementById('ilv').value,분류:document.getElementById('icat').value,이슈제목:document.getElementById('ititle').value,상세내용:document.getElementById('idesc').value,조치계획:document.getElementById('iaction').value,담당자:document.getElementById('iowner').value,목표기한:document.getElementById('idue').value,상태:document.getElementById('ist').value});
+  ls(SK.iss,d);renderIssues();syncIss();toggleP('iss-form');
+  ['icat','ititle','idesc','iaction','iowner','idue'].forEach(id=>document.getElementById(id).value='');
+}
+async function syncIss(){await post('saveIssues',ll(SK.iss,ISS_DEF).map(d=>({'긴급도':d.긴급도,'분류':d.분류,'이슈 제목':d.이슈제목,'상세 내용':d.상세내용,'조치 계획':d.조치계획,'담당자':d.담당자,'목표기한':d.목표기한,'상태':d.상태})));}
+
+// ══ 공통 ══════════════════════════════════════════════════════
+function toggleP(id){const f=document.getElementById(id);f.style.display=f.style.display==='none'?'block':'none';}
+function renderAll(){renderOverview();renderDdss();renderIssues();renderEq();renderVpis();renderVpisWarnCards();if(cBuilt){cBuilt=false;buildCharts();}if(gBuilt)buildGantt();}
+
+// ══ 초기 실행 ══════════════════════════════════════════════════
+renderAll();
+if(API){Object.values(SK).forEach(k=>localStorage.removeItem(k));loadSheets();}
+else sync('idle','로컬 모드');
+</script>
+</body>
+</html>
